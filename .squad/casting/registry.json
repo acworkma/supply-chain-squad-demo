@@ -1,0 +1,39 @@
+{
+  "agents": {
+    "maverick": {
+      "persistent_name": "Maverick",
+      "universe": "Top Gun",
+      "created_at": "2026-03-07T00:00:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "goose": {
+      "persistent_name": "Goose",
+      "universe": "Top Gun",
+      "created_at": "2026-03-07T00:00:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "viper": {
+      "persistent_name": "Viper",
+      "universe": "Top Gun",
+      "created_at": "2026-03-07T00:00:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "iceman": {
+      "persistent_name": "Iceman",
+      "universe": "Top Gun",
+      "created_at": "2026-03-07T00:00:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "jester": {
+      "persistent_name": "Jester",
+      "universe": "Top Gun",
+      "created_at": "2026-03-07T00:00:00Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}
