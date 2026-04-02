@@ -208,27 +208,36 @@ class StateStore:
             self.closets[cfg["id"]] = SupplyCloset(**cfg)
 
         # ── Supply items ────────────────────────────────────────────
+        # Mix of stock levels for visual contrast:
+        #   🔴 RED   — critically low (< 30% par, or < 50% for CRITICAL items)
+        #   🟠 AMBER — below par but not critical
+        #   🟢 GREEN — at or above par level
         item_configs = [
+            # CLO-ICU-01: 1 red, 1 amber, 1 green
             {"id": "ITEM-NS-ICU", "sku": "NS-1000ML", "name": "Normal Saline 1000mL", "closet_id": "CLO-ICU-01", "category": ItemCategory.IV_THERAPY, "criticality": ItemCriticality.CRITICAL,
-                "par_level": 50, "reorder_quantity": 100, "current_quantity": 12, "unit_of_measure": "bag", "consumption_rate_per_day": 8.0, "last_restocked": now - timedelta(days=3)},
+                "par_level": 50, "reorder_quantity": 100, "current_quantity": 12, "unit_of_measure": "bag", "consumption_rate_per_day": 8.0, "last_restocked": now - timedelta(days=5)},
             {"id": "ITEM-GLV-ICU", "sku": "GLV-NITRILE-M", "name": "Nitrile Gloves Medium", "closet_id": "CLO-ICU-01", "category": ItemCategory.PPE, "criticality": ItemCriticality.STANDARD,
-                "par_level": 200, "reorder_quantity": 500, "current_quantity": 180, "unit_of_measure": "box", "consumption_rate_per_day": 15.0, "last_restocked": now - timedelta(days=1)},
+                "par_level": 200, "reorder_quantity": 500, "current_quantity": 240, "unit_of_measure": "box", "consumption_rate_per_day": 15.0, "last_restocked": now - timedelta(days=1)},
             {"id": "ITEM-SYRINGE-ICU", "sku": "SYR-10ML", "name": "Syringe 10mL", "closet_id": "CLO-ICU-01", "category": ItemCategory.IV_THERAPY, "criticality": ItemCriticality.CRITICAL,
-                "par_level": 100, "reorder_quantity": 200, "current_quantity": 95, "unit_of_measure": "each", "consumption_rate_per_day": 12.0, "last_restocked": now - timedelta(days=2)},
+                "par_level": 100, "reorder_quantity": 200, "current_quantity": 65, "unit_of_measure": "each", "consumption_rate_per_day": 12.0, "last_restocked": now - timedelta(days=2)},
+            # CLO-SURG-01: 1 red, 1 amber, 1 green
             {"id": "ITEM-GOWN-SURG", "sku": "GOWN-STERILE-L", "name": "Sterile Gown Large", "closet_id": "CLO-SURG-01", "category": ItemCategory.SURGICAL, "criticality": ItemCriticality.CRITICAL,
                 "par_level": 30, "reorder_quantity": 60, "current_quantity": 8, "unit_of_measure": "each", "consumption_rate_per_day": 4.0, "last_restocked": now - timedelta(days=5)},
             {"id": "ITEM-GAUZE-SURG", "sku": "GAUZE-4X4", "name": "Gauze Pads 4x4", "closet_id": "CLO-SURG-01", "category": ItemCategory.WOUND_CARE, "criticality": ItemCriticality.STANDARD,
-                "par_level": 100, "reorder_quantity": 200, "current_quantity": 45, "unit_of_measure": "pack", "consumption_rate_per_day": 10.0, "last_restocked": now - timedelta(days=4)},
+                "par_level": 100, "reorder_quantity": 200, "current_quantity": 72, "unit_of_measure": "pack", "consumption_rate_per_day": 10.0, "last_restocked": now - timedelta(days=4)},
+            {"id": "ITEM-LINEN-SURG", "sku": "LINEN-SHEET-STD", "name": "Standard Bed Sheet", "closet_id": "CLO-SURG-01", "category": ItemCategory.LINEN, "criticality": ItemCriticality.LOW,
+                "par_level": 40, "reorder_quantity": 80, "current_quantity": 55, "unit_of_measure": "each", "consumption_rate_per_day": 5.0, "last_restocked": now - timedelta(days=1)},
+            # CLO-OR-01: 1 red, 1 green
             {"id": "ITEM-SUTURE-OR", "sku": "SUTURE-VICRYL", "name": "Vicryl Sutures 3-0", "closet_id": "CLO-OR-01", "category": ItemCategory.SURGICAL, "criticality": ItemCriticality.CRITICAL,
-                "par_level": 40, "reorder_quantity": 80, "current_quantity": 38, "unit_of_measure": "box", "consumption_rate_per_day": 3.0, "last_restocked": now - timedelta(days=2)},
+                "par_level": 40, "reorder_quantity": 80, "current_quantity": 42, "unit_of_measure": "box", "consumption_rate_per_day": 3.0, "last_restocked": now - timedelta(days=1)},
             {"id": "ITEM-SHARPS-OR", "sku": "SHARPS-CONT-1G", "name": "Sharps Container 1gal", "closet_id": "CLO-OR-01", "category": ItemCategory.SHARPS, "criticality": ItemCriticality.STANDARD,
                 "par_level": 20, "reorder_quantity": 40, "current_quantity": 5, "unit_of_measure": "each", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=7)},
+            # CLO-NICU-01: 1 green
             {"id": "ITEM-MASK-NICU", "sku": "MASK-N95", "name": "N95 Respirator", "closet_id": "CLO-NICU-01", "category": ItemCategory.PPE, "criticality": ItemCriticality.CRITICAL,
-                "par_level": 80, "reorder_quantity": 160, "current_quantity": 75, "unit_of_measure": "each", "consumption_rate_per_day": 6.0, "last_restocked": now - timedelta(days=1)},
+                "par_level": 80, "reorder_quantity": 160, "current_quantity": 90, "unit_of_measure": "each", "consumption_rate_per_day": 6.0, "last_restocked": now - timedelta(days=1)},
+            # CLO-ONC-01: 1 amber
             {"id": "ITEM-BLEACH-ONC", "sku": "BLEACH-WIPE-160", "name": "Bleach Disinfectant Wipes", "closet_id": "CLO-ONC-01", "category": ItemCategory.CLEANING, "criticality": ItemCriticality.LOW,
-                "par_level": 24, "reorder_quantity": 48, "current_quantity": 22, "unit_of_measure": "canister", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=3)},
-            {"id": "ITEM-LINEN-SURG", "sku": "LINEN-SHEET-STD", "name": "Standard Bed Sheet", "closet_id": "CLO-SURG-01", "category": ItemCategory.LINEN, "criticality": ItemCriticality.LOW,
-                "par_level": 40, "reorder_quantity": 80, "current_quantity": 35, "unit_of_measure": "each", "consumption_rate_per_day": 5.0, "last_restocked": now - timedelta(days=2)},
+                "par_level": 24, "reorder_quantity": 48, "current_quantity": 15, "unit_of_measure": "canister", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=3)},
         ]
         for cfg in item_configs:
             self.items[cfg["id"]] = SupplyItem(**cfg)

@@ -14,6 +14,12 @@ import type {
 /**
  * Returns a badge class string for a supply item based on its current
  * quantity relative to par level and criticality.
+ *
+ * Four tiers:
+ *   🔴 RED    — critically low: CRITICAL items < 50% par, or any item < 30% par
+ *   🟠 AMBER  — low: below par level but not critical
+ *   🟢 GREEN  — stocked: at or above par level
+ *   ⚫ GRAY   — empty: zero quantity
  */
 export function itemStatusColor(
   currentQuantity: number,
@@ -21,8 +27,8 @@ export function itemStatusColor(
   criticality: ItemCriticality,
 ): string {
   if (currentQuantity === 0) return "bg-gray-500/20 text-gray-400 border-gray-500/40";
-  const daysSupply = parLevel > 0 ? currentQuantity / parLevel : 1;
-  if (daysSupply < 0.2 && criticality === "CRITICAL")
+  const ratio = parLevel > 0 ? currentQuantity / parLevel : 1;
+  if (ratio < 0.3 || (ratio < 0.5 && criticality === "CRITICAL"))
     return "bg-red-500/20 text-red-400 border-red-500/40";
   if (currentQuantity < parLevel)
     return "bg-amber-500/20 text-amber-400 border-amber-500/40";
@@ -35,8 +41,8 @@ export function itemStatusDot(
   criticality: ItemCriticality,
 ): string {
   if (currentQuantity === 0) return "bg-gray-500";
-  const daysSupply = parLevel > 0 ? currentQuantity / parLevel : 1;
-  if (daysSupply < 0.2 && criticality === "CRITICAL") return "bg-red-500";
+  const ratio = parLevel > 0 ? currentQuantity / parLevel : 1;
+  if (ratio < 0.3 || (ratio < 0.5 && criticality === "CRITICAL")) return "bg-red-500";
   if (currentQuantity < parLevel) return "bg-amber-500";
   return "bg-emerald-500";
 }
