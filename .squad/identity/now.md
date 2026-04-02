@@ -1,9 +1,9 @@
 ---
-updated_at: 2026-04-02T00:00:00Z
-focus_area: Supply closet replenishment pivot
+updated_at: 2026-04-02T22:55:00Z
+focus_area: Supply closet replenishment — pivot complete
 active_issues: []
 ---
 
 # What We're Focused On
 
-Supply closet replenishment pivot — domain redesign complete. Foundation layer (WI-C-001 through WI-C-004) in progress. 5 agents: Supply Coordinator, Supply Scanner, Catalog Sourcer, Order Manager, Compliance Gate. Target: hospital supply chain directors.
+Supply closet replenishment pivot is **complete**. 525 tests passing (505 backend + 20 frontend), TypeScript compiles clean. All stale bed-management references cleaned up. 5 agents operational: supply-coordinator, supply-scanner, catalog-sourcer, order-manager, compliance-gate. Both scenarios (routine-restock, critical-shortage) fully implemented in simulated mode. Team is ready for next steps — Azure deployment, continuous demo mode, or new feature work.

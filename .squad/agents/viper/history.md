@@ -31,7 +31,7 @@
 - **TransportQueue** — row list with priority badge, patient→destination route, state, scheduled time.
 - **AgentConversation** — chat transcript with per-agent avatar colors (keyword-matched: flow=blue, predictive=purple, bed=green, evs=amber, transport=cyan, policy=red). Intent tag badges, related event ID chips, auto-scroll.
 - **EventTimeline** — append-only log with expand-to-reveal payload JSON + state diff (from→to). Event type color-coded by domain. Monospace sequence/timestamp. Auto-scroll.
-- **Design discipline**: zero new dependencies installed. All styling via Tailwind utility classes + tower-* tokens. Transition-colors on hover/state changes. Monospace for data fields.
+- **Design discipline**: zero new dependencies installed. All styling via Tailwind utility classes + tower-\* tokens. Transition-colors on hover/state changes. Monospace for data fields.
 - Build verified clean (tsc --noEmit + vite build).
 
 ### 2026-03-07: WI-017 — Frontend ↔ API Integration (SSE + Scenario Triggers)
@@ -41,14 +41,16 @@
 - **Scenario trigger pattern**: POST to `/api/scenario/*`, disable all buttons while triggering, 30s auto-clear on running status. Reset clears scenario status immediately.
 - **Connection status**: OR of both SSE streams (events + messages). Green dot = Connected, red dot = Disconnected. Uses `Radio` icon from lucide-react.
 - **ControlTower layout changed** — outer div is now `flex flex-col` with toolbar in a fixed top row and the grid panes in `flex-1`. No height changes to pane layout.
-- **Design consistency**: All new elements use tower-* tokens, dark-mode-only, subtle border/accent hover transitions, monospace-free for button labels, `cn()` utility for conditional classes.
+- **Design consistency**: All new elements use tower-\* tokens, dark-mode-only, subtle border/accent hover transitions, monospace-free for button labels, `cn()` utility for conditional classes.
 
 ### 2026-03-27: Cross-team rename — Happy Path → ER Admission
+
 - Updated `ScenarioToolbar.tsx`: button label `Happy Path` → `ER Admission`, endpoint `/api/scenario/happy-path` → `/api/scenario/er-admission`. Coordinated with Goose (backend), Jester (tests), Maverick (docs).
 
 ### 2026-03-09: Collapsible Agent Messages in AgentConversation
 
 ### 2026-03-27: Agent Directory Panel — Collapsible 3rd Column
+
 - **New component**: `components/dashboard/AgentDirectory.tsx` — renders a collapsible panel in the Control Tower's 3rd grid column.
 - **Two modes**: collapsed (40px vertical strip with Bot icon + "AGENTS" vertical text) and expanded (280px panel with agent cards).
 - **Grid transition**: `transition-[grid-template-columns] duration-300 ease-in-out` on the main grid — columns smoothly resize between `[55fr_45fr_40px]` and `[50fr_40fr_280px]`.
@@ -70,9 +72,10 @@
 - **State management**: Parent `AgentConversation` holds a `Set<string>` of expanded message IDs. Toggle is passed down via `onToggle` callback. Short messages render with no toggle, unchanged.
 - **Extracted `MessageBubble` sub-component**: Keeps the map body clean. Receives `msg`, `expanded`, `onToggle` props.
 - **Summary extraction**: `summarize()` finds the first `.` or `\n` boundary; falls back to full content for short messages.
-- **Zero new dependencies** — `ChevronRight` already in lucide-react, all styling via Tailwind utilities + tower-* tokens.
+- **Zero new dependencies** — `ChevronRight` already in lucide-react, all styling via Tailwind utilities + tower-\* tokens.
 
 ### 2026-04-02: Cross-agent note from Scribe (Phase 3 kickoff)
+
 - **Phase 3 supply chain pivot initiated.** Maverick designed full domain model — see decisions.md DOMAIN-P3-001, DOMAIN-P3-002, PLAN-P3-001.
 - Viper assigned WI-P3-011 through WI-P3-014 (InventoryBoard, OrderQueue, ShipmentTracker, CommandCenter wiring). BedBoard→InventoryBoard, PatientQueue→OrderQueue, TransportQueue→ShipmentTracker.
 - Goose is rewriting backend domain model (critical path). Jester prepping test fixtures. TypeScript types need to mirror new Pydantic models once Goose lands WI-P3-001.
@@ -82,9 +85,10 @@
 - **PatientQueue.tsx → OrderQueue** — Complete rewrite. Exports `OrderQueue` component. Props: `{ orders: Order[]; loading: boolean; error: string | null }`. Table columns: Customer, Order #, State, Priority, Channel, Destination, Items, ETA. Sort by priority rank (EXPEDITED=0, HIGH=1, STANDARD=2 via `priorityRank` map), then oldest `created_at`. State badge via `orderStateBadge()`, priority badge via `fulfillmentPriorityBadge()`. Items column shows count with singular/plural ("1 item" / "3 items"). ETA shows `{n}d` or "—" for null. Uses `ShoppingCart` icon.
 - **TransportQueue.tsx → ShipmentTracker** — Complete rewrite. Exports `ShipmentTracker` component. Props: `{ shipments: Shipment[]; orders: Record<string, Order>; loading: boolean; error: string | null }`. Card-style list layout. Each card: carrier badge (teal accent), route with ArrowRight, customer name from orders lookup (fallback to order_id), tracking number in mono font, state badge via `shipmentStateBadge()` with human-readable labels (including "Delayed ⚠️"), scheduled date formatted as "Mon DD". Uses `Truck` icon.
 - **Both components error-free** — no type errors in the rewritten files. Pre-existing errors in ControlTower.tsx and useApi.ts are expected (WI-P3-014 scope).
-- **Design patterns preserved**: same dark-theme tower-* tokens, error→loading→empty→data state flow, hover transitions, monospace for data fields, compact text-xs sizing, `cn()` for conditional classes.
+- **Design patterns preserved**: same dark-theme tower-\* tokens, error→loading→empty→data state flow, hover transitions, monospace for data fields, compact text-xs sizing, `cn()` for conditional classes.
 
 ### 2026-04-02: WI-P3-014 — CommandCenter Wiring (4 files)
+
 - **`useApi.ts` rewritten** — Imports supply chain types (Product, Order, Task, Shipment, Allocation, FulfillmentConfig). State keys: products, orders, tasks, shipments, allocations, fulfillmentConfig. Maps `data.fulfillment_config` from API (snake_case) to `fulfillmentConfig` (camelCase).
 - **`ControlTower.tsx` rewritten** — Icons: ShoppingCart, Package, Truck. Components imported by new names from old file paths (`OrderQueue` from PatientQueue.tsx, `InventoryBoard` from BedBoard.tsx, `ShipmentTracker` from TransportQueue.tsx). Left column: Order Queue → Inventory Board (flex-[2]) → Shipment Tracker. Middle + right columns unchanged (domain-agnostic). ShipmentTracker receives `orders` as Record (not array) for lookup.
 - **`ScenarioToolbar.tsx`** — Replaced 5 hospital scenarios (ER/OR Admission, Disruption+Replan, EVS-Gated, Unit Transfer) with 3 supply chain scenarios: Standard Fulfillment, Rush Order, Supplier Delay.

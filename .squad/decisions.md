@@ -127,22 +127,34 @@
 - **Design doc:** `.squad/decisions/inbox/maverick-closet-agent-roster.md`
 
 ### PLAN-C-001: Supply Closet Work Item Decomposition — 20 WIs
-- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** In Progress
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Complete — all 20 WIs verified
 - **Supersedes:** PLAN-P3-001 (fulfillment center 17 WIs)
 - 20 WIs: Goose 11 (WI-C-001 through WI-C-011, critical path), Viper 5 (WI-C-013 through WI-C-017), Jester 2 (WI-C-012, WI-C-018), Iceman 2 (WI-C-019, WI-C-020). Critical path: enums→entities+events+transitions→store→tools+routers→schemas+prompts→orchestrator→scenarios→tests. UI parallelizable after store stabilizes. 3 new WIs for human-in-the-loop UI components (VendorChoiceCard, HumanApprovalCard).
 - **Design doc:** `.squad/decisions/inbox/maverick-closet-work-items.md`
 
 ### IMPL-C-001: Foundation Layer — Models Rewrite (WI-C-001 through WI-C-004)
-- **Author:** Goose | **Date:** 2026-04-02 | **Status:** In Progress
+- **Author:** Goose | **Date:** 2026-04-02 | **Status:** Complete
 - Rewriting enums.py, entities.py, events.py, transitions.py for closet domain. Previous fulfillment center types (Order, Product, OrderState, ProductState, FulfillmentPriority, SourceChannel) being replaced with closet types (PurchaseOrder, SupplyItem, POState, ScanState, ItemCategory, ItemCriticality, ContractTier). State store rewrite (WI-C-005) follows after models layer lands.
 
 ### IMPL-C-002: State Store Rewrite Context
-- **Author:** Goose | **Date:** 2026-04-02 | **Status:** Pending (blocked by WI-C-001 through WI-C-004)
+- **Author:** Goose | **Date:** 2026-04-02 | **Status:** Complete
 - Previous supply chain state store (SUPPLY_CHAIN_CONFIG, 16 products, 5 orders, 2 warehouses) will be replaced by closet state store (CLOSET_CONFIG, 15 supply items, 1 closet, 3 vendors, 15 catalog entries). Downstream consumers (orchestrator, tool_functions, routers/state) will break at import until updated.
 
 ### TEST-C-001: Test Infrastructure Prep
-- **Author:** Jester | **Date:** 2026-04-02 | **Status:** In Progress (parallel prep)
+- **Author:** Jester | **Date:** 2026-04-02 | **Status:** Complete
 - Updated conftest.py, test_models.py, test_transitions.py to use closet domain entities and enums. Tests will fail on import until Goose lands WI-C-001 + WI-C-002. Estimated ~245 tests across both files once runnable.
+
+### IMPL-C-003: Closet Foundation Layer Complete
+- **Author:** Goose | **Date:** 2026-04-02 | **Status:** Complete
+- Rewrote all 5 model files (enums.py, entities.py, events.py, transitions.py, __init__.py) to the hospital supply closet replenishment domain per Maverick's design spec. Same architecture (all ADRs hold), new nouns.
+
+### INFRA-C-001: Stale Reference Cleanup — Infrastructure, Docs, Scripts
+- **Author:** Goose | **Date:** 2026-04-02 | **Status:** Complete
+- Fixed 14 stale bed-management references across azure.yaml, squad.config.ts, infra/, docs/, and scripts/. All references now use supply-closet/supply-chain naming.
+
+### STATUS-C-001: Supply Closet Pivot Complete
+- **Author:** Squad Coordinator | **Date:** 2026-04-02 | **Status:** Verified
+- Full domain pivot from bed management to supply closet replenishment is complete. 505 backend tests passing, 20 frontend tests passing, TypeScript compiles clean. All stale bed-management references cleaned up across infrastructure (azure.yaml, Bicep, main.json), documentation (architecture.md, azure-deployment.md, local-development.md), scripts (build_agents.py), and frontend (package.json, CommandCenter.tsx, test data). 5 agents operational: supply-coordinator, supply-scanner, catalog-sourcer, order-manager, compliance-gate. Both scenarios (routine-restock, critical-shortage) fully implemented in simulated mode.
 
 ## Governance
 
