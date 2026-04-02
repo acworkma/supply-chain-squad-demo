@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * CommandCenter — main app shell for the Supply Chain demo.
  *
- * Same dark-theme three-column grid layout as the bed management
+ * Same dark-theme three-column grid layout as the supply closet replenishment
  * "ControlTower", adapted for supply chain domain. Pane content
  * will be built in Phase 3 (in the new Codespace).
  */

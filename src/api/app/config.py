@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Configuration for the Bed Management API.
+    """Configuration for the Supply Closet Replenishment API.
 
     All values are read from environment variables (case-insensitive).
     """
@@ -20,11 +20,11 @@ class Settings(BaseSettings):
     MAX_OUTPUT_TOKENS: int = 1024
 
     # Per-agent model overrides — JSON string from env var
-    # Example: '{"evs-tasking":"gpt-5-mini","transport-ops":"gpt-5-mini"}'
+    # Example: '{"supply-scanner":"gpt-5-mini","order-manager":"gpt-5-mini"}'
     AGENT_MODEL_OVERRIDES: str = "{}"
 
     # Per-agent max token overrides — JSON string from env var
-    # Example: '{"bed-coordinator":2048,"evs-tasking":512}'
+    # Example: '{"supply-coordinator":2048,"supply-scanner":512}'
     AGENT_MAX_TOKENS_OVERRIDES: str = "{}"
 
     # UI theme hint (passed to frontend via /api/state or similar)

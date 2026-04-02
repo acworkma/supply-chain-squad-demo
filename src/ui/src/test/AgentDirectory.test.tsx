@@ -9,7 +9,7 @@ import type { AgentMessage, IntentTag } from "@/types/api";
 const mockMessages: AgentMessage[] = [
   {
     id: "msg-1",
-    agent_name: "bed-coordinator",
+    agent_name: "supply-coordinator",
     agent_role: "Supervisor",
     intent_tag: "PROPOSE" as IntentTag,
     content: "Test message",
@@ -18,7 +18,7 @@ const mockMessages: AgentMessage[] = [
   },
   {
     id: "msg-2",
-    agent_name: "transport-ops",
+    agent_name: "order-manager",
     agent_role: "Worker",
     intent_tag: "EXECUTE" as IntentTag,
     content: "Transport scheduled",
@@ -28,12 +28,11 @@ const mockMessages: AgentMessage[] = [
 ];
 
 const AGENT_DISPLAY_NAMES = [
-  "Bed Coordinator Assistant",
-  "Predictive Capacity",
-  "Bed Allocation",
-  "EVS Tasking",
-  "Transport Ops",
-  "Policy & Safety",
+  "Supply Coordinator",
+  "Supply Scanner Agent",
+  "Catalog Sourcer Agent",
+  "Order Manager Agent",
+  "Compliance Gate Agent",
 ];
 
 /* ── Tests ───────────────────────────────────────────────────── */
@@ -44,7 +43,7 @@ describe("AgentDirectory", () => {
     render(
       <AgentDirectory isOpen={false} onToggle={() => {}} messages={[]} />
     );
-    expect(screen.getByText("AGENTS")).toBeInTheDocument();
+    expect(screen.getByText("Agents")).toBeInTheDocument();
   });
 
   // 2. Collapsed state calls onToggle on click
@@ -55,13 +54,13 @@ describe("AgentDirectory", () => {
       <AgentDirectory isOpen={false} onToggle={onToggle} messages={[]} />
     );
 
-    const strip = screen.getByText("AGENTS").closest("button")!;
+    const strip = screen.getByText("Agents").closest("button")!;
     await user.click(strip);
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  // 3. Expanded state shows all 6 agent names
-  it("shows all 6 agent role names when expanded", () => {
+  // 3. Expanded state shows all 5 agent names
+  it("shows all 5 agent role names when expanded", () => {
     render(
       <AgentDirectory isOpen={true} onToggle={() => {}} messages={[]} />
     );
@@ -89,15 +88,15 @@ describe("AgentDirectory", () => {
       />
     );
 
-    // The last message is from "transport-ops" → Transport Ops card
-    const transportLabel = screen.getByText("Transport Ops");
+    // The last message is from "order-manager" → Order Manager Agent card
+    const transportLabel = screen.getByText("Order Manager Agent");
     const card = transportLabel.closest("[data-active]") ??
-      transportLabel.closest("div");
+      transportLabel.closest(".rounded-lg");
 
     // The active card should have a distinguishing attribute or brighter style
     expect(
       card?.getAttribute("data-active") === "true" ||
-        card?.className.match(/ring|border-.*-400|bg-.*-900|highlight|active/)
+        card?.className.match(/ring|border-.*-400|bg-.*-900|highlight|active|shadow/)
     ).toBeTruthy();
   });
 

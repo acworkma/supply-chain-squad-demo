@@ -80,7 +80,7 @@ The test suite includes:
 - **Event store tests** — publish, subscribe, sequence numbering
 - **Tool function tests** — all 10 tools with edge cases
 - **Endpoint tests** — API routes via httpx AsyncClient
-- **Scenario tests** — full er-admission and disruption-replan e2e
+- **Scenario tests** — full routine-restock and critical-shortage e2e
 
 ### Frontend (React)
 
@@ -108,8 +108,8 @@ Build and run the full app in a single container:
 
 ```bash
 # From repo root
-docker build -t bed-management .
-docker run -p 8000:8000 bed-management
+docker build -t supply-closet .
+docker run -p 8000:8000 supply-closet
 ```
 
 Open **http://localhost:8000**. The container serves both the API and the pre-built React UI as static files.
@@ -130,8 +130,8 @@ src/
 │   │   ├── messages/
 │   │   │   └── message_store.py  # Agent message log + SSE
 │   │   ├── models/
-│   │   │   ├── entities.py       # Bed, Patient, Task, etc.
-│   │   │   ├── enums.py          # State enums (BedState, PatientState, ...)
+│   │   │   ├── entities.py       # Item, Closet, PurchaseOrder, etc.
+│   │   │   ├── enums.py          # State enums (ItemState, POState, ...)
 │   │   │   ├── events.py         # Event model + type constants
 │   │   │   └── transitions.py    # State machine validation rules
 │   │   ├── routers/
@@ -151,7 +151,7 @@ src/
     │   ├── App.tsx               # Root component
     │   ├── components/
     │   │   ├── layout/           # ControlTower, ScenarioToolbar, PaneHeader
-    │   │   ├── dashboard/        # PatientQueue, BedBoard, TransportQueue
+    │   │   ├── dashboard/        # OrderQueue, InventoryBoard, ShipmentTracker
     │   │   ├── conversation/     # AgentConversation
     │   │   └── timeline/         # EventTimeline
     │   ├── hooks/
@@ -182,4 +182,4 @@ src/
 4. Add orchestration steps in `orchestrator.py`
 
 **Modify seed data:**
-Edit `seed_initial_state()` in `src/api/app/state/store.py`. The 12-bed, 2-unit layout is defined there.
+Edit `seed_initial_state()` in `src/api/app/state/store.py`. The initial supply closet inventory is defined there.

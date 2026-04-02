@@ -3,7 +3,7 @@
 # Usage: ./scripts/smoke_test.sh [--full] [base_url]
 #
 # Without --full: checks health + state + events + agent-messages endpoints.
-# With --full:    also seeds state, triggers er-admission, and verifies completion.
+# With --full:    also seeds state, triggers routine-restock, and verifies completion.
 
 set -euo pipefail
 
@@ -43,7 +43,7 @@ check_endpoint "/api/agent-messages"
 
 if [ "$FULL_MODE" = true ]; then
   echo ""
-  echo "── Full scenario check (er-admission) ──"
+  echo "── Full scenario check (routine-restock) ──"
 
   # Seed state
   echo "==> POST ${BASE_URL}/api/scenario/seed"
@@ -55,13 +55,13 @@ if [ "$FULL_MODE" = true ]; then
     FAILED=1
   fi
 
-  # Trigger er-admission
-  echo "==> POST ${BASE_URL}/api/scenario/er-admission"
-  HP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST "${BASE_URL}/api/scenario/er-admission")
+  # Trigger routine-restock
+  echo "==> POST ${BASE_URL}/api/scenario/routine-restock"
+  HP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 -X POST "${BASE_URL}/api/scenario/routine-restock")
   if [ "$HP_CODE" -eq 202 ]; then
-    echo "    ✅ ER-admission returned 202 Accepted"
+    echo "    ✅ routine-restock returned 202 Accepted"
   else
-    echo "    ❌ ER-admission returned HTTP ${HP_CODE}"
+    echo "    ❌ routine-restock returned HTTP ${HP_CODE}"
     FAILED=1
   fi
 
@@ -72,7 +72,7 @@ if [ "$FULL_MODE" = true ]; then
   COMPLETED=false
   while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
     EVENTS=$(curl -s --max-time 5 "${BASE_URL}/api/events")
-    if echo "$EVENTS" | grep -q "PlacementComplete"; then
+    if echo "$EVENTS" | grep -q "RestockComplete"; then
       COMPLETED=true
       break
     fi
@@ -81,9 +81,9 @@ if [ "$FULL_MODE" = true ]; then
   done
 
   if [ "$COMPLETED" = true ]; then
-    echo "    ✅ PlacementComplete event detected"
+    echo "    ✅ RestockComplete event detected"
   else
-    echo "    ❌ PlacementComplete not found within ${TIMEOUT}s"
+    echo "    ❌ RestockComplete not found within ${TIMEOUT}s"
     FAILED=1
   fi
 

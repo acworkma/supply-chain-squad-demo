@@ -1,7 +1,7 @@
 import type { SquadConfig } from '@bradygaster/squad';
 
 /**
- * Squad Configuration for bed-management-squad-demo
+ * Squad Configuration for supply-chain-squad-demo
  * 
  */
 const config: SquadConfig = {

@@ -26,7 +26,7 @@ That's it. `azd up` does three things:
 3. **Deploys the app** — builds the Docker image, pushes to Container Registry, deploys to Container Apps
 
 You'll be prompted for:
-- **Environment name** — a short name for this deployment (e.g., `bed-mgmt-demo`)
+- **Environment name** — a short name for this deployment (e.g., `supply-closet-demo`)
 - **Azure location** — the region (e.g., `eastus2`)
 - **Azure subscription** — which subscription to use
 
@@ -45,7 +45,7 @@ You'll be prompted for:
 | AI Services | `ai-` | Cognitive services account (hosts model deployments) |
 | AI Hub | `ah-` | Foundry hub (groups projects) |
 | AI Project | `ap-` | Foundry project (agents live here) |
-| Model Deployment | — | GPT-5.2 deployment used by all 6 agents |
+| Model Deployment | — | GPT-5.2 deployment used by all 5 agents |
 
 ### Container Apps
 
@@ -93,7 +93,7 @@ After deployment, verify the app is running:
 # Basic check (endpoints only)
 ./scripts/smoke_test.sh https://your-app.azurecontainerapps.io
 
-# Full check (seeds state + runs er-admission scenario)
+# Full check (seeds state + runs routine-restock scenario)
 ./scripts/smoke_test.sh --full https://your-app.azurecontainerapps.io
 ```
 

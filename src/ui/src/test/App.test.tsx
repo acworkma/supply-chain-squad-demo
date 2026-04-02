@@ -17,9 +17,8 @@ describe('App', () => {
   it('shows the Ops Dashboard pane', () => {
     render(<App />)
     // Look for the Ops Dashboard header — exact text may vary
-    expect(
-      screen.getByText(/ops dashboard|bed board|patient flow/i)
-    ).toBeInTheDocument()
+    const matches = screen.getAllByText(/purchase orders|closet inventory/i)
+    expect(matches.length).toBeGreaterThan(0)
   })
 
   it('shows the Agent Conversation pane', () => {

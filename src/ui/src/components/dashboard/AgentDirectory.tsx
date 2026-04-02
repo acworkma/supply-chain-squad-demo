@@ -6,12 +6,11 @@ import type { AgentMessage } from "@/types/api";
 /* ── Agent definitions ─────────────────────────────────────────── */
 
 const AGENT_DIRECTORY = [
-  { name: "supply-coordinator", role: "Supply Chain Coordinator", desc: "The central hub. Orchestrates the entire fulfillment workflow — from order intake through allocation, warehouse operations, and shipment." },
-  { name: "demand-forecaster", role: "Demand Forecaster", desc: "Analyzes inventory levels and order pipeline to generate capacity assessments. Flags low-stock and out-of-stock situations before they block fulfillment." },
-  { name: "inventory-allocator", role: "Inventory Allocator", desc: "Assigns available inventory to orders. Creates allocation holds, handles split-warehouse scenarios, and releases allocations on cancellation." },
-  { name: "warehouse-ops", role: "Warehouse Operations", desc: "The fulfillment floor manager. Creates and tracks pick, pack, restock, and quality check tasks across warehouse zones." },
-  { name: "logistics-planner", role: "Logistics Planner", desc: "Plans shipments from warehouse to customer. Selects carriers based on priority, generates tracking numbers, and handles rerouting on delays." },
-  { name: "compliance-monitor", role: "Compliance Monitor", desc: "The SLA watchdog. Monitors fulfillment timelines, validates policy requirements, and escalates when thresholds are breached." },
+  { name: "supply-coordinator", role: "Supply Coordinator", desc: "The central hub. Orchestrates the entire closet replenishment workflow — from scan initiation through vendor sourcing, ordering, and restocking." },
+  { name: "supply-scanner", role: "Supply Scanner Agent", desc: "Scans supply closets, counts inventory levels, and identifies items below par. Triggers reorder analysis." },
+  { name: "catalog-sourcer", role: "Catalog Sourcer Agent", desc: "Looks up vendor catalogs for items needing reorder. Compares pricing, stock status, and contract tiers to find the best source." },
+  { name: "order-manager", role: "Order Manager Agent", desc: "Creates purchase orders, manages approvals, submits to vendors, and tracks shipment through delivery and restocking." },
+  { name: "compliance-gate", role: "Compliance Gate Agent", desc: "Enforces the $1,000 auto-approval threshold. Escalates critical shortages. Reviews POs for policy compliance." },
 ];
 
 /* ── Props ──────────────────────────────────────────────────────── */

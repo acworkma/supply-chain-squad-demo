@@ -68,7 +68,8 @@ from app.tools.tool_functions import (
 
 
 def _seed_closet(store: StateStore, closet_id: str = "CLO-ICU-01") -> SupplyCloset:
-    closet = SupplyCloset(id=closet_id, name="ICU Supply Closet", floor="floor-2", unit="ICU", location="2nd Floor East Wing")
+    closet = SupplyCloset(id=closet_id, name="ICU Supply Closet",
+                          floor="floor-2", unit="ICU", location="2nd Floor East Wing")
     store.closets[closet_id] = closet
     return closet
 
@@ -221,14 +222,16 @@ class TestGetVendors:
 class TestGetPurchaseOrders:
 
     async def test_returns_all_pos(self, state_store: StateStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test")
+        po = PurchaseOrder(id="PO-1", scan_id="S-1",
+                           vendor_id="V-1", vendor_name="Test")
         state_store.purchase_orders["PO-1"] = po
         result = await get_purchase_orders(state_store=state_store)
         assert result["ok"] is True
         assert len(result["purchase_orders"]) == 1
 
     async def test_filter_by_state(self, state_store: StateStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.APPROVED)
         state_store.purchase_orders["PO-1"] = po
         result = await get_purchase_orders(state_store=state_store, po_state="APPROVED")
         assert len(result["purchase_orders"]) == 1
@@ -246,14 +249,16 @@ class TestGetPurchaseOrders:
 class TestGetShipments:
 
     async def test_returns_all_shipments(self, state_store: StateStore):
-        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="V-1", closet_id="CLO-1")
+        shp = Shipment(id="SHP-1", po_id="PO-1",
+                       vendor_id="V-1", closet_id="CLO-1")
         state_store.shipments["SHP-1"] = shp
         result = await get_shipments(state_store=state_store)
         assert result["ok"] is True
         assert len(result["shipments"]) == 1
 
     async def test_filter_by_state(self, state_store: StateStore):
-        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="V-1", closet_id="CLO-1", state=ShipmentState.SHIPPED)
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="V-1",
+                       closet_id="CLO-1", state=ShipmentState.SHIPPED)
         state_store.shipments["SHP-1"] = shp
         result = await get_shipments(state_store=state_store, shipment_state="SHIPPED")
         assert len(result["shipments"]) == 1
@@ -334,11 +339,13 @@ class TestAnalyzeScan:
         state_store.scans["SCAN-001"] = scan
 
         await analyze_scan("SCAN-001", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert state_store.get_scan("SCAN-001").state == ScanState.ITEMS_IDENTIFIED
+        assert state_store.get_scan(
+            "SCAN-001").state == ScanState.ITEMS_IDENTIFIED
 
     async def test_computes_days_until_stockout(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_closet(state_store)
-        _seed_item(state_store, current_qty=8, par_level=20)  # 8 bags / 4 per day = 2.0 days
+        # 8 bags / 4 per day = 2.0 days
+        _seed_item(state_store, current_qty=8, par_level=20)
         _seed_catalog_entry(state_store)
         scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
         state_store.scans["SCAN-001"] = scan
@@ -410,10 +417,13 @@ class TestLookupVendorCatalog:
 
     async def test_recommends_cheapest_in_stock_gpo(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_vendor(state_store, "VND-1")
-        _seed_catalog_entry(store=state_store, entry_id="CAT-1", vendor_id="VND-1", unit_price=10.0)
-        vendor2 = Vendor(id="VND-2", name="SpotVendor", contract_tier=ContractTier.SPOT_BUY, lead_time_days=5, expedite_lead_time_days=2, minimum_order_value=50.0)
+        _seed_catalog_entry(store=state_store, entry_id="CAT-1",
+                            vendor_id="VND-1", unit_price=10.0)
+        vendor2 = Vendor(id="VND-2", name="SpotVendor", contract_tier=ContractTier.SPOT_BUY,
+                         lead_time_days=5, expedite_lead_time_days=2, minimum_order_value=50.0)
         state_store.vendors["VND-2"] = vendor2
-        entry2 = CatalogEntry(id="CAT-2", vendor_id="VND-2", item_sku="SKU-NS-1000", unit_price=7.0, contract_tier=ContractTier.SPOT_BUY, stock_status=VendorStockStatus.IN_STOCK, lead_time_days=5)
+        entry2 = CatalogEntry(id="CAT-2", vendor_id="VND-2", item_sku="SKU-NS-1000", unit_price=7.0,
+                              contract_tier=ContractTier.SPOT_BUY, stock_status=VendorStockStatus.IN_STOCK, lead_time_days=5)
         state_store.catalog["CAT-2"] = entry2
 
         result = await lookup_vendor_catalog("SKU-NS-1000", state_store=state_store, event_store=event_store, message_store=message_store)
@@ -466,7 +476,8 @@ class TestCreatePurchaseOrder:
     async def test_requires_human_approval_over_threshold(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_closet(state_store)
         _seed_vendor(state_store)
-        _seed_catalog_entry(state_store, unit_price=50.0)  # 30 × $50 = $1500 >= $1000
+        # 30 × $50 = $1500 >= $1000
+        _seed_catalog_entry(state_store, unit_price=50.0)
         scan = ScanResult(
             id="SCAN-BIG", closet_id="CLO-ICU-01", state=ScanState.ITEMS_IDENTIFIED,
             items_below_par=1,
@@ -521,7 +532,8 @@ class TestCreatePurchaseOrder:
 
     async def test_no_items_to_reorder(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_vendor(state_store)
-        scan = ScanResult(id="SCAN-EMPTY", closet_id="CLO-1", state=ScanState.ITEMS_IDENTIFIED)
+        scan = ScanResult(id="SCAN-EMPTY", closet_id="CLO-1",
+                          state=ScanState.ITEMS_IDENTIFIED)
         state_store.scans["SCAN-EMPTY"] = scan
         result = await create_purchase_order("SCAN-EMPTY", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
@@ -535,7 +547,8 @@ class TestCreatePurchaseOrder:
 class TestApprovePurchaseOrder:
 
     async def test_approves_pending_po(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.PENDING_APPROVAL)
         state_store.purchase_orders["PO-1"] = po
         result = await approve_purchase_order("PO-1", approved=True, note="Looks good", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is True
@@ -543,31 +556,38 @@ class TestApprovePurchaseOrder:
         assert state_store.get_purchase_order("PO-1").state == POState.APPROVED
 
     async def test_rejects_pending_po(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.PENDING_APPROVAL)
         state_store.purchase_orders["PO-1"] = po
         result = await approve_purchase_order("PO-1", approved=False, note="Too expensive", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is True
         assert result["approved"] is False
-        assert state_store.get_purchase_order("PO-1").state == POState.CANCELLED
+        assert state_store.get_purchase_order(
+            "PO-1").state == POState.CANCELLED
 
     async def test_emits_human_approved_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.PENDING_APPROVAL)
         state_store.purchase_orders["PO-1"] = po
         await approve_purchase_order("PO-1", approved=True, state_store=state_store, event_store=event_store, message_store=message_store)
-        assert any(e.event_type == PO_HUMAN_APPROVED for e in event_store.get_events())
+        assert any(e.event_type ==
+                   PO_HUMAN_APPROVED for e in event_store.get_events())
 
     async def test_emits_human_rejected_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.PENDING_APPROVAL)
         state_store.purchase_orders["PO-1"] = po
         await approve_purchase_order("PO-1", approved=False, state_store=state_store, event_store=event_store, message_store=message_store)
-        assert any(e.event_type == PO_HUMAN_REJECTED for e in event_store.get_events())
+        assert any(e.event_type ==
+                   PO_HUMAN_REJECTED for e in event_store.get_events())
 
     async def test_po_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         result = await approve_purchase_order("PO-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
 
     async def test_po_not_pending_returns_error(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.APPROVED)
         state_store.purchase_orders["PO-1"] = po
         result = await approve_purchase_order("PO-1", approved=True, state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
@@ -581,24 +601,29 @@ class TestApprovePurchaseOrder:
 class TestSubmitPurchaseOrder:
 
     async def test_submits_approved_po(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.APPROVED)
         state_store.purchase_orders["PO-1"] = po
         result = await submit_purchase_order("PO-1", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is True
-        assert state_store.get_purchase_order("PO-1").state == POState.SUBMITTED
+        assert state_store.get_purchase_order(
+            "PO-1").state == POState.SUBMITTED
 
     async def test_emits_po_submitted_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.APPROVED)
         state_store.purchase_orders["PO-1"] = po
         await submit_purchase_order("PO-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert any(e.event_type == PO_SUBMITTED for e in event_store.get_events())
+        assert any(e.event_type ==
+                   PO_SUBMITTED for e in event_store.get_events())
 
     async def test_po_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         result = await submit_purchase_order("PO-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
 
     async def test_invalid_state_returns_error(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.CREATED)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1",
+                           vendor_name="Test", state=POState.CREATED)
         state_store.purchase_orders["PO-1"] = po
         result = await submit_purchase_order("PO-1", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
@@ -612,7 +637,8 @@ class TestCreateShipment:
 
     async def test_creates_shipment(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_vendor(state_store)
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01",
+                           vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
         state_store.purchase_orders["PO-1"] = po
         result = await create_shipment("PO-1", "MedLine Logistics", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is True
@@ -622,7 +648,8 @@ class TestCreateShipment:
 
     async def test_shipment_stored_in_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_vendor(state_store)
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01",
+                           vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
         state_store.purchase_orders["PO-1"] = po
         result = await create_shipment("PO-1", "MedLine Logistics", state_store=state_store, event_store=event_store, message_store=message_store)
         shipment = state_store.get_shipment(result["shipment_id"])
@@ -632,10 +659,12 @@ class TestCreateShipment:
 
     async def test_emits_shipment_created_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_vendor(state_store)
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01",
+                           vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
         state_store.purchase_orders["PO-1"] = po
         await create_shipment("PO-1", "MedLine Logistics", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert any(e.event_type == SHIPMENT_CREATED for e in event_store.get_events())
+        assert any(e.event_type ==
+                   SHIPMENT_CREATED for e in event_store.get_events())
 
     async def test_po_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         result = await create_shipment("PO-FAKE", "Carrier", state_store=state_store, event_store=event_store, message_store=message_store)
@@ -658,11 +687,13 @@ class TestReceiveShipment:
         po = PurchaseOrder(
             id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine",
             state=POState.SHIPPED, closet_id="CLO-ICU-01",
-            line_items=[POLineItem(item_sku="SKU-NS-1000", item_name="Normal Saline", quantity=30, unit_price=8.50, extended_price=255.0, contract_tier=ContractTier.GPO_CONTRACT, criticality=ItemCriticality.CRITICAL)],
+            line_items=[POLineItem(item_sku="SKU-NS-1000", item_name="Normal Saline", quantity=30, unit_price=8.50,
+                                   extended_price=255.0, contract_tier=ContractTier.GPO_CONTRACT, criticality=ItemCriticality.CRITICAL)],
         )
         state_store.purchase_orders["PO-1"] = po
 
-        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01", closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01",
+                       closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
         state_store.shipments["SHP-1"] = shp
 
         result = await receive_shipment("SHP-1", state_store=state_store, event_store=event_store, message_store=message_store)
@@ -676,24 +707,30 @@ class TestReceiveShipment:
     async def test_transitions_shipment_to_delivered(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_closet(state_store)
         _seed_vendor(state_store)
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.SHIPPED, closet_id="CLO-ICU-01")
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01",
+                           vendor_name="MedLine", state=POState.SHIPPED, closet_id="CLO-ICU-01")
         state_store.purchase_orders["PO-1"] = po
-        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01", closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01",
+                       closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
         state_store.shipments["SHP-1"] = shp
 
         await receive_shipment("SHP-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert state_store.get_shipment("SHP-1").state == ShipmentState.DELIVERED
+        assert state_store.get_shipment(
+            "SHP-1").state == ShipmentState.DELIVERED
 
     async def test_emits_shipment_delivered_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         _seed_closet(state_store)
         _seed_vendor(state_store)
-        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.SHIPPED, closet_id="CLO-ICU-01")
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01",
+                           vendor_name="MedLine", state=POState.SHIPPED, closet_id="CLO-ICU-01")
         state_store.purchase_orders["PO-1"] = po
-        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01", closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01",
+                       closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
         state_store.shipments["SHP-1"] = shp
 
         await receive_shipment("SHP-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert any(e.event_type == SHIPMENT_DELIVERED for e in event_store.get_events())
+        assert any(e.event_type ==
+                   SHIPMENT_DELIVERED for e in event_store.get_events())
 
     async def test_shipment_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
         result = await receive_shipment("SHP-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)

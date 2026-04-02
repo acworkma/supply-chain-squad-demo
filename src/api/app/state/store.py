@@ -193,52 +193,80 @@ class StateStore:
 
         # ── Closets ─────────────────────────────────────────────────
         closet_configs = [
-            {"id": "CLO-ICU-01", "name": "ICU Main Closet", "floor": "floor-2", "unit": "ICU", "location": "2nd Floor, Wing A"},
-            {"id": "CLO-NICU-01", "name": "NICU Closet", "floor": "floor-2", "unit": "NICU", "location": "2nd Floor, Wing B"},
-            {"id": "CLO-SURG-01", "name": "Med-Surg Closet", "floor": "floor-3", "unit": "Med-Surg", "location": "3rd Floor, Wing A"},
-            {"id": "CLO-ONC-01", "name": "Oncology Closet", "floor": "floor-3", "unit": "Oncology", "location": "3rd Floor, Wing B"},
-            {"id": "CLO-OR-01", "name": "OR Supply Room", "floor": "floor-4", "unit": "OR", "location": "4th Floor, Suite 1"},
+            {"id": "CLO-ICU-01", "name": "ICU Main Closet", "floor": "floor-2",
+                "unit": "ICU", "location": "2nd Floor, Wing A"},
+            {"id": "CLO-NICU-01", "name": "NICU Closet", "floor": "floor-2",
+                "unit": "NICU", "location": "2nd Floor, Wing B"},
+            {"id": "CLO-SURG-01", "name": "Med-Surg Closet", "floor": "floor-3",
+                "unit": "Med-Surg", "location": "3rd Floor, Wing A"},
+            {"id": "CLO-ONC-01", "name": "Oncology Closet", "floor": "floor-3",
+                "unit": "Oncology", "location": "3rd Floor, Wing B"},
+            {"id": "CLO-OR-01", "name": "OR Supply Room", "floor": "floor-4",
+                "unit": "OR", "location": "4th Floor, Suite 1"},
         ]
         for cfg in closet_configs:
             self.closets[cfg["id"]] = SupplyCloset(**cfg)
 
         # ── Supply items ────────────────────────────────────────────
         item_configs = [
-            {"id": "ITEM-NS-ICU", "sku": "NS-1000ML", "name": "Normal Saline 1000mL", "closet_id": "CLO-ICU-01", "category": ItemCategory.IV_THERAPY, "criticality": ItemCriticality.CRITICAL, "par_level": 50, "reorder_quantity": 100, "current_quantity": 12, "unit_of_measure": "bag", "consumption_rate_per_day": 8.0, "last_restocked": now - timedelta(days=3)},
-            {"id": "ITEM-GLV-ICU", "sku": "GLV-NITRILE-M", "name": "Nitrile Gloves Medium", "closet_id": "CLO-ICU-01", "category": ItemCategory.PPE, "criticality": ItemCriticality.STANDARD, "par_level": 200, "reorder_quantity": 500, "current_quantity": 180, "unit_of_measure": "box", "consumption_rate_per_day": 15.0, "last_restocked": now - timedelta(days=1)},
-            {"id": "ITEM-SYRINGE-ICU", "sku": "SYR-10ML", "name": "Syringe 10mL", "closet_id": "CLO-ICU-01", "category": ItemCategory.IV_THERAPY, "criticality": ItemCriticality.CRITICAL, "par_level": 100, "reorder_quantity": 200, "current_quantity": 95, "unit_of_measure": "each", "consumption_rate_per_day": 12.0, "last_restocked": now - timedelta(days=2)},
-            {"id": "ITEM-GOWN-SURG", "sku": "GOWN-STERILE-L", "name": "Sterile Gown Large", "closet_id": "CLO-SURG-01", "category": ItemCategory.SURGICAL, "criticality": ItemCriticality.CRITICAL, "par_level": 30, "reorder_quantity": 60, "current_quantity": 8, "unit_of_measure": "each", "consumption_rate_per_day": 4.0, "last_restocked": now - timedelta(days=5)},
-            {"id": "ITEM-GAUZE-SURG", "sku": "GAUZE-4X4", "name": "Gauze Pads 4x4", "closet_id": "CLO-SURG-01", "category": ItemCategory.WOUND_CARE, "criticality": ItemCriticality.STANDARD, "par_level": 100, "reorder_quantity": 200, "current_quantity": 45, "unit_of_measure": "pack", "consumption_rate_per_day": 10.0, "last_restocked": now - timedelta(days=4)},
-            {"id": "ITEM-SUTURE-OR", "sku": "SUTURE-VICRYL", "name": "Vicryl Sutures 3-0", "closet_id": "CLO-OR-01", "category": ItemCategory.SURGICAL, "criticality": ItemCriticality.CRITICAL, "par_level": 40, "reorder_quantity": 80, "current_quantity": 38, "unit_of_measure": "box", "consumption_rate_per_day": 3.0, "last_restocked": now - timedelta(days=2)},
-            {"id": "ITEM-SHARPS-OR", "sku": "SHARPS-CONT-1G", "name": "Sharps Container 1gal", "closet_id": "CLO-OR-01", "category": ItemCategory.SHARPS, "criticality": ItemCriticality.STANDARD, "par_level": 20, "reorder_quantity": 40, "current_quantity": 5, "unit_of_measure": "each", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=7)},
-            {"id": "ITEM-MASK-NICU", "sku": "MASK-N95", "name": "N95 Respirator", "closet_id": "CLO-NICU-01", "category": ItemCategory.PPE, "criticality": ItemCriticality.CRITICAL, "par_level": 80, "reorder_quantity": 160, "current_quantity": 75, "unit_of_measure": "each", "consumption_rate_per_day": 6.0, "last_restocked": now - timedelta(days=1)},
-            {"id": "ITEM-BLEACH-ONC", "sku": "BLEACH-WIPE-160", "name": "Bleach Disinfectant Wipes", "closet_id": "CLO-ONC-01", "category": ItemCategory.CLEANING, "criticality": ItemCriticality.LOW, "par_level": 24, "reorder_quantity": 48, "current_quantity": 22, "unit_of_measure": "canister", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=3)},
-            {"id": "ITEM-LINEN-SURG", "sku": "LINEN-SHEET-STD", "name": "Standard Bed Sheet", "closet_id": "CLO-SURG-01", "category": ItemCategory.LINEN, "criticality": ItemCriticality.LOW, "par_level": 40, "reorder_quantity": 80, "current_quantity": 35, "unit_of_measure": "each", "consumption_rate_per_day": 5.0, "last_restocked": now - timedelta(days=2)},
+            {"id": "ITEM-NS-ICU", "sku": "NS-1000ML", "name": "Normal Saline 1000mL", "closet_id": "CLO-ICU-01", "category": ItemCategory.IV_THERAPY, "criticality": ItemCriticality.CRITICAL,
+                "par_level": 50, "reorder_quantity": 100, "current_quantity": 12, "unit_of_measure": "bag", "consumption_rate_per_day": 8.0, "last_restocked": now - timedelta(days=3)},
+            {"id": "ITEM-GLV-ICU", "sku": "GLV-NITRILE-M", "name": "Nitrile Gloves Medium", "closet_id": "CLO-ICU-01", "category": ItemCategory.PPE, "criticality": ItemCriticality.STANDARD,
+                "par_level": 200, "reorder_quantity": 500, "current_quantity": 180, "unit_of_measure": "box", "consumption_rate_per_day": 15.0, "last_restocked": now - timedelta(days=1)},
+            {"id": "ITEM-SYRINGE-ICU", "sku": "SYR-10ML", "name": "Syringe 10mL", "closet_id": "CLO-ICU-01", "category": ItemCategory.IV_THERAPY, "criticality": ItemCriticality.CRITICAL,
+                "par_level": 100, "reorder_quantity": 200, "current_quantity": 95, "unit_of_measure": "each", "consumption_rate_per_day": 12.0, "last_restocked": now - timedelta(days=2)},
+            {"id": "ITEM-GOWN-SURG", "sku": "GOWN-STERILE-L", "name": "Sterile Gown Large", "closet_id": "CLO-SURG-01", "category": ItemCategory.SURGICAL, "criticality": ItemCriticality.CRITICAL,
+                "par_level": 30, "reorder_quantity": 60, "current_quantity": 8, "unit_of_measure": "each", "consumption_rate_per_day": 4.0, "last_restocked": now - timedelta(days=5)},
+            {"id": "ITEM-GAUZE-SURG", "sku": "GAUZE-4X4", "name": "Gauze Pads 4x4", "closet_id": "CLO-SURG-01", "category": ItemCategory.WOUND_CARE, "criticality": ItemCriticality.STANDARD,
+                "par_level": 100, "reorder_quantity": 200, "current_quantity": 45, "unit_of_measure": "pack", "consumption_rate_per_day": 10.0, "last_restocked": now - timedelta(days=4)},
+            {"id": "ITEM-SUTURE-OR", "sku": "SUTURE-VICRYL", "name": "Vicryl Sutures 3-0", "closet_id": "CLO-OR-01", "category": ItemCategory.SURGICAL, "criticality": ItemCriticality.CRITICAL,
+                "par_level": 40, "reorder_quantity": 80, "current_quantity": 38, "unit_of_measure": "box", "consumption_rate_per_day": 3.0, "last_restocked": now - timedelta(days=2)},
+            {"id": "ITEM-SHARPS-OR", "sku": "SHARPS-CONT-1G", "name": "Sharps Container 1gal", "closet_id": "CLO-OR-01", "category": ItemCategory.SHARPS, "criticality": ItemCriticality.STANDARD,
+                "par_level": 20, "reorder_quantity": 40, "current_quantity": 5, "unit_of_measure": "each", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=7)},
+            {"id": "ITEM-MASK-NICU", "sku": "MASK-N95", "name": "N95 Respirator", "closet_id": "CLO-NICU-01", "category": ItemCategory.PPE, "criticality": ItemCriticality.CRITICAL,
+                "par_level": 80, "reorder_quantity": 160, "current_quantity": 75, "unit_of_measure": "each", "consumption_rate_per_day": 6.0, "last_restocked": now - timedelta(days=1)},
+            {"id": "ITEM-BLEACH-ONC", "sku": "BLEACH-WIPE-160", "name": "Bleach Disinfectant Wipes", "closet_id": "CLO-ONC-01", "category": ItemCategory.CLEANING, "criticality": ItemCriticality.LOW,
+                "par_level": 24, "reorder_quantity": 48, "current_quantity": 22, "unit_of_measure": "canister", "consumption_rate_per_day": 2.0, "last_restocked": now - timedelta(days=3)},
+            {"id": "ITEM-LINEN-SURG", "sku": "LINEN-SHEET-STD", "name": "Standard Bed Sheet", "closet_id": "CLO-SURG-01", "category": ItemCategory.LINEN, "criticality": ItemCriticality.LOW,
+                "par_level": 40, "reorder_quantity": 80, "current_quantity": 35, "unit_of_measure": "each", "consumption_rate_per_day": 5.0, "last_restocked": now - timedelta(days=2)},
         ]
         for cfg in item_configs:
             self.items[cfg["id"]] = SupplyItem(**cfg)
 
         # ── Vendors ─────────────────────────────────────────────────
         vendor_configs = [
-            {"id": "VND-MEDLINE", "name": "Medline Industries", "contract_tier": ContractTier.GPO_CONTRACT, "lead_time_days": 2, "expedite_lead_time_days": 1, "minimum_order_value": 500.0},
-            {"id": "VND-CARDINAL", "name": "Cardinal Health", "contract_tier": ContractTier.GPO_CONTRACT, "lead_time_days": 3, "expedite_lead_time_days": 1, "minimum_order_value": 750.0},
-            {"id": "VND-MCKESSON", "name": "McKesson Medical", "contract_tier": ContractTier.PREFERRED, "lead_time_days": 2, "expedite_lead_time_days": 1, "minimum_order_value": 300.0},
-            {"id": "VND-SPOTMED", "name": "SpotMed Supplies", "contract_tier": ContractTier.SPOT_BUY, "lead_time_days": 5, "expedite_lead_time_days": 2, "minimum_order_value": 100.0},
+            {"id": "VND-MEDLINE", "name": "Medline Industries", "contract_tier": ContractTier.GPO_CONTRACT,
+                "lead_time_days": 2, "expedite_lead_time_days": 1, "minimum_order_value": 500.0},
+            {"id": "VND-CARDINAL", "name": "Cardinal Health", "contract_tier": ContractTier.GPO_CONTRACT,
+                "lead_time_days": 3, "expedite_lead_time_days": 1, "minimum_order_value": 750.0},
+            {"id": "VND-MCKESSON", "name": "McKesson Medical", "contract_tier": ContractTier.PREFERRED,
+                "lead_time_days": 2, "expedite_lead_time_days": 1, "minimum_order_value": 300.0},
+            {"id": "VND-SPOTMED", "name": "SpotMed Supplies", "contract_tier": ContractTier.SPOT_BUY,
+                "lead_time_days": 5, "expedite_lead_time_days": 2, "minimum_order_value": 100.0},
         ]
         for cfg in vendor_configs:
             self.vendors[cfg["id"]] = Vendor(**cfg)
 
         # ── Catalog entries ─────────────────────────────────────────
         catalog_configs = [
-            {"id": "CAT-NS-MED", "vendor_id": "VND-MEDLINE", "item_sku": "NS-1000ML", "unit_price": 3.50, "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
-            {"id": "CAT-NS-CARD", "vendor_id": "VND-CARDINAL", "item_sku": "NS-1000ML", "unit_price": 3.75, "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 3},
-            {"id": "CAT-GLV-MED", "vendor_id": "VND-MEDLINE", "item_sku": "GLV-NITRILE-M", "unit_price": 12.00, "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
-            {"id": "CAT-GOWN-CARD", "vendor_id": "VND-CARDINAL", "item_sku": "GOWN-STERILE-L", "unit_price": 8.50, "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.LOW_STOCK, "lead_time_days": 3},
-            {"id": "CAT-GOWN-SPOT", "vendor_id": "VND-SPOTMED", "item_sku": "GOWN-STERILE-L", "unit_price": 14.00, "contract_tier": ContractTier.SPOT_BUY, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 5},
-            {"id": "CAT-GAUZE-MCK", "vendor_id": "VND-MCKESSON", "item_sku": "GAUZE-4X4", "unit_price": 4.25, "contract_tier": ContractTier.PREFERRED, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
-            {"id": "CAT-SUTURE-CARD", "vendor_id": "VND-CARDINAL", "item_sku": "SUTURE-VICRYL", "unit_price": 45.00, "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 3},
-            {"id": "CAT-SHARPS-MCK", "vendor_id": "VND-MCKESSON", "item_sku": "SHARPS-CONT-1G", "unit_price": 6.75, "contract_tier": ContractTier.PREFERRED, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
-            {"id": "CAT-MASK-MED", "vendor_id": "VND-MEDLINE", "item_sku": "MASK-N95", "unit_price": 2.50, "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
+            {"id": "CAT-NS-MED", "vendor_id": "VND-MEDLINE", "item_sku": "NS-1000ML", "unit_price": 3.50,
+                "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
+            {"id": "CAT-NS-CARD", "vendor_id": "VND-CARDINAL", "item_sku": "NS-1000ML", "unit_price": 3.75,
+                "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 3},
+            {"id": "CAT-GLV-MED", "vendor_id": "VND-MEDLINE", "item_sku": "GLV-NITRILE-M", "unit_price": 12.00,
+                "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
+            {"id": "CAT-GOWN-CARD", "vendor_id": "VND-CARDINAL", "item_sku": "GOWN-STERILE-L", "unit_price": 8.50,
+                "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.LOW_STOCK, "lead_time_days": 3},
+            {"id": "CAT-GOWN-SPOT", "vendor_id": "VND-SPOTMED", "item_sku": "GOWN-STERILE-L", "unit_price": 14.00,
+                "contract_tier": ContractTier.SPOT_BUY, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 5},
+            {"id": "CAT-GAUZE-MCK", "vendor_id": "VND-MCKESSON", "item_sku": "GAUZE-4X4", "unit_price": 4.25,
+                "contract_tier": ContractTier.PREFERRED, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
+            {"id": "CAT-SUTURE-CARD", "vendor_id": "VND-CARDINAL", "item_sku": "SUTURE-VICRYL", "unit_price": 45.00,
+                "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 3},
+            {"id": "CAT-SHARPS-MCK", "vendor_id": "VND-MCKESSON", "item_sku": "SHARPS-CONT-1G", "unit_price": 6.75,
+                "contract_tier": ContractTier.PREFERRED, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
+            {"id": "CAT-MASK-MED", "vendor_id": "VND-MEDLINE", "item_sku": "MASK-N95", "unit_price": 2.50,
+                "contract_tier": ContractTier.GPO_CONTRACT, "stock_status": VendorStockStatus.IN_STOCK, "lead_time_days": 2},
         ]
         for cfg in catalog_configs:
             self.catalog[cfg["id"]] = CatalogEntry(**cfg)

@@ -32,7 +32,8 @@ class TestSeedInitialState:
     def test_seed_creates_closets(self, state_store: StateStore):
         state_store.seed_initial_state()
         closets = state_store.get_closets()
-        assert len(closets) > 0, "seed_initial_state should create at least one closet"
+        assert len(
+            closets) > 0, "seed_initial_state should create at least one closet"
 
     def test_seed_creates_5_closets(self, state_store: StateStore):
         state_store.seed_initial_state()
@@ -254,7 +255,8 @@ class TestStateTransitions:
         assert result.state == ScanState.ANALYZING
 
     async def test_transition_scan_invalid_raises(self, state_store: StateStore):
-        scan = ScanResult(id="SCAN-T1", closet_id="CLO-ICU-01", state=ScanState.INITIATED)
+        scan = ScanResult(id="SCAN-T1", closet_id="CLO-ICU-01",
+                          state=ScanState.INITIATED)
         state_store.scans["SCAN-T1"] = scan
         with pytest.raises(InvalidTransitionError):
             await state_store.transition_scan("SCAN-T1", ScanState.COMPLETE)
@@ -264,13 +266,15 @@ class TestStateTransitions:
             await state_store.transition_scan("fake-scan-999", ScanState.ANALYZING)
 
     async def test_transition_purchase_order_valid(self, state_store: StateStore):
-        po = PurchaseOrder(id="PO-T1", scan_id="SCAN-T1", vendor_id="VND-1", vendor_name="Test")
+        po = PurchaseOrder(id="PO-T1", scan_id="SCAN-T1",
+                           vendor_id="VND-1", vendor_name="Test")
         state_store.purchase_orders["PO-T1"] = po
         result = await state_store.transition_purchase_order("PO-T1", POState.APPROVED)
         assert result.state == POState.APPROVED
 
     async def test_transition_purchase_order_invalid_raises(self, state_store: StateStore):
-        po = PurchaseOrder(id="PO-T1", scan_id="SCAN-T1", vendor_id="VND-1", vendor_name="Test")
+        po = PurchaseOrder(id="PO-T1", scan_id="SCAN-T1",
+                           vendor_id="VND-1", vendor_name="Test")
         state_store.purchase_orders["PO-T1"] = po
         with pytest.raises(InvalidTransitionError):
             await state_store.transition_purchase_order("PO-T1", POState.RECEIVED)
@@ -280,13 +284,15 @@ class TestStateTransitions:
             await state_store.transition_purchase_order("FAKE-PO", POState.APPROVED)
 
     async def test_transition_shipment_valid(self, state_store: StateStore):
-        shipment = Shipment(id="SHP-T1", po_id="PO-T1", vendor_id="VND-1", closet_id="CLO-1")
+        shipment = Shipment(id="SHP-T1", po_id="PO-T1",
+                            vendor_id="VND-1", closet_id="CLO-1")
         state_store.shipments["SHP-T1"] = shipment
         result = await state_store.transition_shipment("SHP-T1", ShipmentState.SHIPPED)
         assert result.state == ShipmentState.SHIPPED
 
     async def test_transition_shipment_invalid_raises(self, state_store: StateStore):
-        shipment = Shipment(id="SHP-T1", po_id="PO-T1", vendor_id="VND-1", closet_id="CLO-1")
+        shipment = Shipment(id="SHP-T1", po_id="PO-T1",
+                            vendor_id="VND-1", closet_id="CLO-1")
         state_store.shipments["SHP-T1"] = shipment
         with pytest.raises(InvalidTransitionError):
             await state_store.transition_shipment("SHP-T1", ShipmentState.DELIVERED)
@@ -368,11 +374,13 @@ class TestConcurrentAccess:
         await asyncio.gather(*(transition(f"SCAN-{i}") for i in range(10)))
 
         for i in range(10):
-            assert state_store.get_scan(f"SCAN-{i}").state == ScanState.ANALYZING
+            assert state_store.get_scan(
+                f"SCAN-{i}").state == ScanState.ANALYZING
 
     async def test_concurrent_conflicting_po_transitions(self, state_store: StateStore):
         """Two concurrent transitions on same PO — one should win, other should fail."""
-        po = PurchaseOrder(id="PO-RACE", scan_id="SCAN-1", vendor_id="VND-1", vendor_name="Test")
+        po = PurchaseOrder(id="PO-RACE", scan_id="SCAN-1",
+                           vendor_id="VND-1", vendor_name="Test")
         state_store.purchase_orders["PO-RACE"] = po
 
         results = []

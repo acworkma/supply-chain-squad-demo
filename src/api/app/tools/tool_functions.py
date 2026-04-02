@@ -211,7 +211,8 @@ async def analyze_scan(
                 e for e in state_store.catalog.values()
                 if e.item_sku == item.sku and e.stock_status == VendorStockStatus.IN_STOCK
             ]
-            best_entry = min(catalog_entries, key=lambda e: e.unit_price) if catalog_entries else None
+            best_entry = min(
+                catalog_entries, key=lambda e: e.unit_price) if catalog_entries else None
 
             reorder_item = ReorderItem(
                 item_id=item.id,
@@ -287,12 +288,15 @@ async def lookup_vendor_catalog(
         return {"ok": False, "error": f"No catalog entries found for SKU {item_sku}"}
 
     # Rank: in-stock GPO first, then preferred, then spot buy
-    tier_rank = {ContractTier.GPO_CONTRACT: 0, ContractTier.PREFERRED: 1, ContractTier.SPOT_BUY: 2}
+    tier_rank = {ContractTier.GPO_CONTRACT: 0,
+                 ContractTier.PREFERRED: 1, ContractTier.SPOT_BUY: 2}
 
-    in_stock = [e for e in entries if e.stock_status == VendorStockStatus.IN_STOCK]
+    in_stock = [e for e in entries if e.stock_status ==
+                VendorStockStatus.IN_STOCK]
     recommended = None
     if in_stock:
-        recommended = min(in_stock, key=lambda e: (tier_rank.get(e.contract_tier, 9), e.unit_price))
+        recommended = min(in_stock, key=lambda e: (
+            tier_rank.get(e.contract_tier, 9), e.unit_price))
 
     event = await event_store.publish(
         event_type=VENDOR_LOOKUP_COMPLETED,
@@ -414,7 +418,8 @@ async def create_purchase_order(
         event = await event_store.publish(
             event_type=PO_PENDING_HUMAN_APPROVAL,
             entity_id=po_id,
-            payload={"po_id": po_id, "total_cost": po.total_cost, "vendor": vendor.name},
+            payload={"po_id": po_id, "total_cost": po.total_cost,
+                     "vendor": vendor.name},
         )
         await message_store.publish(
             agent_name="compliance-gate",
@@ -431,7 +436,8 @@ async def create_purchase_order(
         event = await event_store.publish(
             event_type=PO_AUTO_APPROVED,
             entity_id=po_id,
-            payload={"po_id": po_id, "total_cost": po.total_cost, "vendor": vendor.name},
+            payload={"po_id": po_id, "total_cost": po.total_cost,
+                     "vendor": vendor.name},
         )
         await message_store.publish(
             agent_name="order-manager",
@@ -495,7 +501,8 @@ async def approve_purchase_order(
             event_type=PO_HUMAN_APPROVED,
             entity_id=po_id,
             payload={"po_id": po_id, "note": note},
-            state_diff={"from_state": "PENDING_APPROVAL", "to_state": "APPROVED"},
+            state_diff={"from_state": "PENDING_APPROVAL",
+                        "to_state": "APPROVED"},
         )
         await message_store.publish(
             agent_name="compliance-gate",
@@ -513,7 +520,8 @@ async def approve_purchase_order(
             event_type=PO_HUMAN_REJECTED,
             entity_id=po_id,
             payload={"po_id": po_id, "note": note},
-            state_diff={"from_state": "PENDING_APPROVAL", "to_state": "CANCELLED"},
+            state_diff={"from_state": "PENDING_APPROVAL",
+                        "to_state": "CANCELLED"},
         )
         await message_store.publish(
             agent_name="compliance-gate",
@@ -695,7 +703,8 @@ async def receive_shipment(
         await event_store.publish(
             event_type=CLOSET_RESTOCKED,
             entity_id=shipment.closet_id,
-            payload={"shipment_id": shipment_id, "items_restocked": restocked_items},
+            payload={"shipment_id": shipment_id,
+                     "items_restocked": restocked_items},
         )
 
     await message_store.publish(
@@ -752,7 +761,8 @@ async def escalate(
     event = await event_store.publish(
         event_type=CRITICAL_SHORTAGE_DETECTED,
         entity_id=entity_id,
-        payload={"issue_type": issue_type, "severity": severity, "message": message},
+        payload={"issue_type": issue_type,
+                 "severity": severity, "message": message},
     )
 
     await message_store.publish(

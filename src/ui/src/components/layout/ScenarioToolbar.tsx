@@ -26,16 +26,15 @@ interface ScenarioGroup {
 
 const SCENARIO_GROUPS: ScenarioGroup[] = [
   {
-    category: "Fulfillment",
+    category: "Supply Management",
     items: [
-      { label: "Standard Fulfillment", endpoint: "/api/scenario/standard-fulfillment", hoverColor: "hover:text-tower-accent" },
-      { label: "Rush Order", endpoint: "/api/scenario/rush-order", hoverColor: "hover:text-tower-accent" },
+      { label: "Routine Restock", endpoint: "/api/scenario/routine-restock", hoverColor: "hover:text-tower-accent" },
     ],
   },
   {
-    category: "Disruptions",
+    category: "Emergencies",
     items: [
-      { label: "Supplier Delay", endpoint: "/api/scenario/supplier-delay", hoverColor: "hover:text-tower-warning" },
+      { label: "Critical Shortage", endpoint: "/api/scenario/critical-shortage", hoverColor: "hover:text-tower-warning" },
     ],
   },
 ];

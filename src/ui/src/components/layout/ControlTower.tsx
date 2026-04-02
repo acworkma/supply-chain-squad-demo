@@ -1,9 +1,9 @@
 import { ShoppingCart, Package, Truck, MessageSquare, Activity, Network } from "lucide-react";
 import { PaneHeader } from "@/components/layout/PaneHeader";
 import { ScenarioToolbar } from "@/components/layout/ScenarioToolbar";
-import { OrderQueue } from "@/components/dashboard/PatientQueue";
-import { InventoryBoard } from "@/components/dashboard/BedBoard";
-import { ShipmentTracker } from "@/components/dashboard/TransportQueue";
+import { OrderQueue } from "@/components/dashboard/OrderQueue";
+import { InventoryBoard } from "@/components/dashboard/InventoryBoard";
+import { ShipmentTracker } from "@/components/dashboard/ShipmentTracker";
 import { AgentNetwork } from "@/components/dashboard/AgentNetwork";
 import { AgentDirectory } from "@/components/dashboard/AgentDirectory";
 import { AgentConversation } from "@/components/conversation/AgentConversation";

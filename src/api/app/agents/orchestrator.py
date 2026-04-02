@@ -172,7 +172,8 @@ async def _run_live(
         parts = settings.PROJECT_CONNECTION_STRING.split(";")
         host, sub_id, rg, project = parts
         endpoint = f"https://{host}/api/projects/{project}"
-        project_client = AIProjectClient(endpoint=endpoint, credential=credential)
+        project_client = AIProjectClient(
+            endpoint=endpoint, credential=credential)
 
     openai_client = project_client.get_openai_client()
 
@@ -198,7 +199,8 @@ async def _run_live(
         rounds = 0
 
         deployment = _model_overrides.get(agent_name) or default_deployment
-        resolved_max_tokens = _token_overrides.get(agent_name) or default_max_tokens
+        resolved_max_tokens = _token_overrides.get(
+            agent_name) or default_max_tokens
 
         agent_instructions = _load_prompt(agent_name)
         # Convert Chat Completions tool format to Responses API format
@@ -542,7 +544,8 @@ async def _simulate_routine_restock(
         entries = vr.get("catalog_entries", [])
         if entries:
             # Pick cheapest in-stock entry
-            available = [e for e in entries if e.get("stock_status") != "OUT_OF_STOCK"]
+            available = [e for e in entries if e.get(
+                "stock_status") != "OUT_OF_STOCK"]
             if available:
                 best = min(available, key=lambda e: e["unit_price"])
                 best_entry = best  # save last best for PO creation
@@ -551,9 +554,11 @@ async def _simulate_routine_restock(
                     f"(catalog: {best['entry_id']}, stock: {best['stock_status']})"
                 )
             else:
-                sourcing_lines.append(f"  • {item['item_name']}: No available vendors found")
+                sourcing_lines.append(
+                    f"  • {item['item_name']}: No available vendors found")
         else:
-            sourcing_lines.append(f"  • {item['item_name']}: No catalog entries found")
+            sourcing_lines.append(
+                f"  • {item['item_name']}: No catalog entries found")
 
     await message_store.publish(
         agent_name="catalog-sourcer",
@@ -607,7 +612,8 @@ async def _simulate_routine_restock(
         await asyncio.sleep(STEP_DELAY)
         approve_result = await _call_tool(
             "approve_purchase_order",
-            {"po_id": po_id, "approved": True, "note": "Routine restock — approved."},
+            {"po_id": po_id, "approved": True,
+                "note": "Routine restock — approved."},
             state_store=state_store, event_store=event_store, message_store=message_store,
         )
         if not approve_result.get("ok"):
@@ -802,7 +808,8 @@ async def _simulate_critical_shortage(
         return {"ok": False, "error": analysis.get("error", "analyze_scan failed")}
 
     items_below_par = analysis.get("reorder_items", [])
-    critical_items = [i for i in items_below_par if i.get("criticality") == "CRITICAL"]
+    critical_items = [i for i in items_below_par if i.get(
+        "criticality") == "CRITICAL"]
     all_below_par_summary = "\n".join(
         f"  • {item['item_name']} ({item['item_id']}): {item['current_quantity']}/{item['par_level']} "
         f"— {item['days_until_stockout']:.1f} days, criticality: {item['criticality']}"
@@ -886,11 +893,14 @@ async def _simulate_critical_shortage(
     for item, vr in zip(items_below_par, vendor_results):
         entries = vr.get("catalog_entries", [])
         if entries:
-            available = [e for e in entries if e.get("stock_status") != "OUT_OF_STOCK"]
+            available = [e for e in entries if e.get(
+                "stock_status") != "OUT_OF_STOCK"]
             if available:
                 # For critical items, prefer IN_STOCK over cheapest
-                in_stock = [e for e in available if e.get("stock_status") == "IN_STOCK"]
-                best = in_stock[0] if in_stock else min(available, key=lambda e: e["unit_price"])
+                in_stock = [e for e in available if e.get(
+                    "stock_status") == "IN_STOCK"]
+                best = in_stock[0] if in_stock else min(
+                    available, key=lambda e: e["unit_price"])
                 if best_vendor_id is None:
                     best_vendor_id = best["vendor_id"]
                 sourcing_lines.append(
@@ -898,9 +908,11 @@ async def _simulate_critical_shortage(
                     f"(catalog: {best['entry_id']}, stock: {best['stock_status']})"
                 )
             else:
-                sourcing_lines.append(f"  • {item['item_name']}: ⚠️ All vendors out of stock")
+                sourcing_lines.append(
+                    f"  • {item['item_name']}: ⚠️ All vendors out of stock")
         else:
-            sourcing_lines.append(f"  • {item['item_name']}: No catalog entries found")
+            sourcing_lines.append(
+                f"  • {item['item_name']}: No catalog entries found")
 
     await message_store.publish(
         agent_name="catalog-sourcer",
@@ -1112,7 +1124,8 @@ async def run_scenario(
         logger.info("Running %s with live Foundry agents", scenario_type)
         return await _run_live(scenario_type, state_store, event_store, message_store)
 
-    logger.info("Running %s in simulated mode (no Foundry agents)", scenario_type)
+    logger.info("Running %s in simulated mode (no Foundry agents)",
+                scenario_type)
     if scenario_type == "routine-restock":
         return await _simulate_routine_restock(state_store, event_store, message_store)
     elif scenario_type == "critical-shortage":

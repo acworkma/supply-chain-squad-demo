@@ -76,7 +76,8 @@ async def run_routine_restock(background_tasks: BackgroundTasks):
     background_tasks.add_task(_run)
     return JSONResponse(
         status_code=202,
-        content={"status": "started", "scenario": "routine-restock", "closet_id": "CLO-ICU-01"},
+        content={"status": "started", "scenario": "routine-restock",
+                 "closet_id": "CLO-ICU-01"},
     )
 
 
@@ -127,7 +128,8 @@ async def run_critical_shortage(background_tasks: BackgroundTasks):
     background_tasks.add_task(_run)
     return JSONResponse(
         status_code=202,
-        content={"status": "started", "scenario": "critical-shortage", "closet_id": "CLO-SURG-01"},
+        content={"status": "started", "scenario": "critical-shortage",
+                 "closet_id": "CLO-SURG-01"},
     )
 
 

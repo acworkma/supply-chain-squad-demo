@@ -49,7 +49,7 @@
     "resourceToken": "[uniqueString(resourceGroup().id)]",
     "tags": {
       "environment": "[parameters('environmentName')]",
-      "project": "bed-management-demo"
+      "project": "supply-chain-squad-demo"
     }
   },
   "resources": [
@@ -619,7 +619,7 @@
                 "template": {
                   "containers": [
                     {
-                      "name": "bed-management-api",
+                      "name": "supply-chain-api",
                       "image": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
                       "resources": {
                         "cpu": "[json('0.5')]",

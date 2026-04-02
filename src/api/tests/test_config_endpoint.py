@@ -48,7 +48,7 @@ class TestRuntimeConfigStore:
 
     @pytest.mark.asyncio
     async def test_update_agent_model_overrides(self, config_store: RuntimeConfigStore):
-        overrides = {"evs-tasking": "gpt-4o-mini"}
+        overrides = {"supply-scanner": "gpt-4o-mini"}
         result = await config_store.update_config(agent_model_overrides=overrides)
         assert result["agent_model_overrides"] == overrides
 
@@ -59,7 +59,7 @@ class TestRuntimeConfigStore:
 
     @pytest.mark.asyncio
     async def test_update_agent_max_tokens_overrides(self, config_store: RuntimeConfigStore):
-        overrides = {"bed-coordinator": 4096}
+        overrides = {"supply-coordinator": 4096}
         result = await config_store.update_config(agent_max_tokens_overrides=overrides)
         assert result["agent_max_tokens_overrides"] == overrides
 
@@ -75,7 +75,7 @@ class TestRuntimeConfigStore:
         await config_store.update_config(
             model_deployment="gpt-4o",
             max_output_tokens=2048,
-            agent_model_overrides={"evs-tasking": "gpt-4o-mini"},
+            agent_model_overrides={"supply-scanner": "gpt-4o-mini"},
         )
         result = await config_store.reset()
         assert result["model_deployment"] == settings.MODEL_DEPLOYMENT_NAME
@@ -133,7 +133,7 @@ class TestConfigEndpoints:
 
     @pytest.mark.asyncio
     async def test_put_agent_model_overrides(self, client: AsyncClient):
-        overrides = {"evs-tasking": "gpt-4o-mini", "transport-ops": "gpt-4o-mini"}
+        overrides = {"supply-scanner": "gpt-4o-mini", "order-manager": "gpt-4o-mini"}
         resp = await client.put("/api/config", json={
             "agent_model_overrides": overrides,
         })
@@ -142,7 +142,7 @@ class TestConfigEndpoints:
 
     @pytest.mark.asyncio
     async def test_put_agent_max_tokens_overrides(self, client: AsyncClient):
-        overrides = {"bed-coordinator": 4096}
+        overrides = {"supply-coordinator": 4096}
         resp = await client.put("/api/config", json={
             "agent_max_tokens_overrides": overrides,
         })

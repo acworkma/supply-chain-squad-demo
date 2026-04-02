@@ -10,20 +10,13 @@ interface AgentDef {
   role: string;
 }
 
-const ORCHESTRATOR: AgentDef = { name: "bed-coordinator", role: "Bed Coordinator Assistant" };
+const ORCHESTRATOR: AgentDef = { name: "supply-coordinator", role: "Supply Coordinator" };
 
 const SPECIALISTS: AgentDef[] = [
-  { name: "predictive-capacity", role: "Predictive Capacity" },
-  { name: "policy-safety", role: "Policy & Safety" },
-  { name: "bed-allocation", role: "Bed Allocation" },
-  { name: "evs-tasking", role: "EVS Tasking" },
-  { name: "transport-ops", role: "Transport Ops" },
-];
-
-const SIMULATED_ACTORS: AgentDef[] = [
-  { name: "er-doctor", role: "ER Physician" },
-  { name: "surgical-team", role: "Surgical Team" },
-  { name: "unit-supervisor", role: "Unit Supervisor" },
+  { name: "supply-scanner", role: "Supply Scanner Agent" },
+  { name: "catalog-sourcer", role: "Catalog Sourcer Agent" },
+  { name: "order-manager", role: "Order Manager Agent" },
+  { name: "compliance-gate", role: "Compliance Gate Agent" },
 ];
 
 /* ── Line descriptor ──────────────────────────────────────────── */
@@ -139,39 +132,6 @@ export function AgentNetwork({ messages }: AgentNetworkProps) {
           );
         })}
       </svg>
-
-      {/* Simulated actors (left side — only show if they've sent messages) */}
-      {(() => {
-        const activeActors = SIMULATED_ACTORS.filter(a => lastIntentByAgent[a.name]);
-        if (activeActors.length === 0) return null;
-        return (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-            {activeActors.map((actor) => (
-              <div
-                key={actor.name}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border border-dashed px-2.5 py-1.5 text-[10px]",
-                  "bg-tower-surface",
-                  activeAgent === actor.name
-                    ? "border-green-500/60 text-green-400 shadow-[0_0_8px_-3px_rgba(34,197,94,0.4)]"
-                    : "border-green-500/30 text-gray-500"
-                )}
-              >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className={cn(
-                    "relative inline-flex h-2 w-2 rounded-full transition-colors duration-300",
-                    activeAgent === actor.name ? "bg-green-400 animate-pulse" : "bg-gray-600"
-                  )} />
-                </span>
-                <span className={cn("font-semibold truncate", activeAgent === actor.name ? "text-green-400" : "text-gray-400")}>
-                  {actor.role}
-                </span>
-                <span className="text-[8px] text-gray-600 italic">simulated</span>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
 
       {/* Orchestrator (top center) */}
       <AgentNode

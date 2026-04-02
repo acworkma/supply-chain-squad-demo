@@ -20,25 +20,25 @@ class TestEventPublish:
 
     async def test_publish_returns_event_with_sequence(self, event_store: EventStore):
         event = await event_store.publish(
-            event_type="BedReserved",
-            entity_id="bed-001",
-            payload={"patient_id": "pat-001", "bed_id": "bed-001"},
+            event_type="POCreated",
+            entity_id="item-001",
+            payload={"order_id": "po-001", "item_id": "item-001"},
         )
         assert event.sequence >= 1
-        assert event.event_type == "BedReserved"
-        assert event.entity_id == "bed-001"
+        assert event.event_type == "POCreated"
+        assert event.entity_id == "item-001"
 
     async def test_publish_event_has_timestamp(self, event_store: EventStore):
         event = await event_store.publish(
-            event_type="BedReserved",
-            entity_id="bed-001",
+            event_type="POCreated",
+            entity_id="item-001",
             payload={},
         )
         assert event.timestamp is not None
 
     async def test_publish_event_has_unique_id(self, event_store: EventStore):
-        e1 = await event_store.publish("BedReserved", "bed-001", {})
-        e2 = await event_store.publish("BedReleased", "bed-001", {})
+        e1 = await event_store.publish("POCreated", "item-001", {})
+        e2 = await event_store.publish("POApproved", "item-001", {})
         assert e1.id != e2.id
 
     async def test_sequence_is_monotonically_increasing(self, event_store: EventStore):
@@ -57,26 +57,26 @@ class TestEventPublish:
 
     async def test_payload_preserved(self, event_store: EventStore):
         payload = {
-            "patient_id": "pat-001",
-            "bed_id": "bed-001",
-            "reason": "high acuity match",
+            "order_id": "po-001",
+            "item_id": "item-001",
+            "reason": "critical shortage",
         }
-        event = await event_store.publish("BedReserved", "bed-001", payload)
+        event = await event_store.publish("POCreated", "item-001", payload)
         assert event.payload == payload
 
     async def test_publish_with_state_diff(self, event_store: EventStore):
         event = await event_store.publish(
-            event_type="BedStateChanged",
-            entity_id="bed-001",
+            event_type="POStateChanged",
+            entity_id="item-001",
             payload={},
-            state_diff={"from_state": "DIRTY", "to_state": "CLEANING"},
+            state_diff={"from_state": "PENDING", "to_state": "APPROVED"},
         )
         assert event.state_diff is not None
-        assert event.state_diff.from_state == "DIRTY"
-        assert event.state_diff.to_state == "CLEANING"
+        assert event.state_diff.from_state == "PENDING"
+        assert event.state_diff.to_state == "APPROVED"
 
     async def test_publish_without_state_diff(self, event_store: EventStore):
-        event = await event_store.publish("BedReserved", "bed-001", {})
+        event = await event_store.publish("POCreated", "item-001", {})
         assert event.state_diff is None
 
 

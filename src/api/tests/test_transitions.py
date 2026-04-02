@@ -97,7 +97,8 @@ class TestScanTransitions:
             if target == ScanState.COMPLETE:
                 continue
             with pytest.raises(InvalidTransitionError):
-                validate_transition(ScanState.COMPLETE, target, VALID_SCAN_TRANSITIONS)
+                validate_transition(ScanState.COMPLETE,
+                                    target, VALID_SCAN_TRANSITIONS)
 
     def test_initiated_is_entry_point(self):
         """INITIATED can only go to ANALYZING."""
@@ -105,18 +106,22 @@ class TestScanTransitions:
             if target == ScanState.INITIATED:
                 continue
             if target == ScanState.ANALYZING:
-                validate_transition(ScanState.INITIATED, target, VALID_SCAN_TRANSITIONS)
+                validate_transition(ScanState.INITIATED,
+                                    target, VALID_SCAN_TRANSITIONS)
             else:
                 with pytest.raises(InvalidTransitionError):
-                    validate_transition(ScanState.INITIATED, target, VALID_SCAN_TRANSITIONS)
+                    validate_transition(ScanState.INITIATED,
+                                        target, VALID_SCAN_TRANSITIONS)
 
     def test_ordering_can_skip_approval(self):
         """ORDERING → COMPLETE is valid (auto-approved path)."""
-        validate_transition(ScanState.ORDERING, ScanState.COMPLETE, VALID_SCAN_TRANSITIONS)
+        validate_transition(ScanState.ORDERING,
+                            ScanState.COMPLETE, VALID_SCAN_TRANSITIONS)
 
     def test_ordering_can_go_to_pending_approval(self):
         """ORDERING → PENDING_APPROVAL for human approval path."""
-        validate_transition(ScanState.ORDERING, ScanState.PENDING_APPROVAL, VALID_SCAN_TRANSITIONS)
+        validate_transition(ScanState.ORDERING,
+                            ScanState.PENDING_APPROVAL, VALID_SCAN_TRANSITIONS)
 
 
 # ===================================================================
@@ -195,7 +200,8 @@ class TestPOTransitions:
             if target == POState.RECEIVED:
                 continue
             with pytest.raises(InvalidTransitionError):
-                validate_transition(POState.RECEIVED, target, VALID_PO_TRANSITIONS)
+                validate_transition(
+                    POState.RECEIVED, target, VALID_PO_TRANSITIONS)
 
     def test_cancelled_is_terminal(self):
         """CANCELLED has no outgoing transitions."""
@@ -203,25 +209,30 @@ class TestPOTransitions:
             if target == POState.CANCELLED:
                 continue
             with pytest.raises(InvalidTransitionError):
-                validate_transition(POState.CANCELLED, target, VALID_PO_TRANSITIONS)
+                validate_transition(POState.CANCELLED,
+                                    target, VALID_PO_TRANSITIONS)
 
     def test_created_can_be_auto_approved(self):
         """CREATED → APPROVED (auto-approval path)."""
-        validate_transition(POState.CREATED, POState.APPROVED, VALID_PO_TRANSITIONS)
+        validate_transition(
+            POState.CREATED, POState.APPROVED, VALID_PO_TRANSITIONS)
 
     def test_created_can_go_to_pending_approval(self):
         """CREATED → PENDING_APPROVAL (human approval path)."""
-        validate_transition(POState.CREATED, POState.PENDING_APPROVAL, VALID_PO_TRANSITIONS)
+        validate_transition(
+            POState.CREATED, POState.PENDING_APPROVAL, VALID_PO_TRANSITIONS)
 
     def test_pending_approval_can_be_cancelled(self):
         """PENDING_APPROVAL → CANCELLED (human rejection)."""
-        validate_transition(POState.PENDING_APPROVAL, POState.CANCELLED, VALID_PO_TRANSITIONS)
+        validate_transition(POState.PENDING_APPROVAL,
+                            POState.CANCELLED, VALID_PO_TRANSITIONS)
 
     def test_cannot_cancel_after_approved(self):
         """Cannot cancel once APPROVED, SUBMITTED, CONFIRMED, SHIPPED, or RECEIVED."""
         for state in [POState.APPROVED, POState.SUBMITTED, POState.CONFIRMED, POState.SHIPPED, POState.RECEIVED]:
             with pytest.raises(InvalidTransitionError):
-                validate_transition(state, POState.CANCELLED, VALID_PO_TRANSITIONS)
+                validate_transition(
+                    state, POState.CANCELLED, VALID_PO_TRANSITIONS)
 
 
 # ===================================================================
@@ -274,7 +285,8 @@ class TestShipmentTransitions:
     )
     def test_invalid_shipment_transition_raises(self, from_state, to_state):
         with pytest.raises(InvalidTransitionError):
-            validate_transition(from_state, to_state, VALID_SHIPMENT_TRANSITIONS)
+            validate_transition(from_state, to_state,
+                                VALID_SHIPMENT_TRANSITIONS)
 
     def test_self_transition_is_noop_or_rejected(self):
         for state in ShipmentState:
@@ -296,17 +308,22 @@ class TestShipmentTransitions:
             if target == ShipmentState.DELIVERED:
                 continue
             with pytest.raises(InvalidTransitionError):
-                validate_transition(ShipmentState.DELIVERED, target, VALID_SHIPMENT_TRANSITIONS)
+                validate_transition(ShipmentState.DELIVERED,
+                                    target, VALID_SHIPMENT_TRANSITIONS)
 
     def test_delayed_can_resume_or_deliver(self):
         """DELAYED → IN_TRANSIT (resume) or DELAYED → DELIVERED."""
-        validate_transition(ShipmentState.DELAYED, ShipmentState.IN_TRANSIT, VALID_SHIPMENT_TRANSITIONS)
-        validate_transition(ShipmentState.DELAYED, ShipmentState.DELIVERED, VALID_SHIPMENT_TRANSITIONS)
+        validate_transition(ShipmentState.DELAYED,
+                            ShipmentState.IN_TRANSIT, VALID_SHIPMENT_TRANSITIONS)
+        validate_transition(ShipmentState.DELAYED,
+                            ShipmentState.DELIVERED, VALID_SHIPMENT_TRANSITIONS)
 
     def test_delayed_reachable_from_shipped_and_in_transit(self):
         """DELAYED can be reached from SHIPPED and IN_TRANSIT."""
-        validate_transition(ShipmentState.SHIPPED, ShipmentState.DELAYED, VALID_SHIPMENT_TRANSITIONS)
-        validate_transition(ShipmentState.IN_TRANSIT, ShipmentState.DELAYED, VALID_SHIPMENT_TRANSITIONS)
+        validate_transition(ShipmentState.SHIPPED,
+                            ShipmentState.DELAYED, VALID_SHIPMENT_TRANSITIONS)
+        validate_transition(ShipmentState.IN_TRANSIT,
+                            ShipmentState.DELAYED, VALID_SHIPMENT_TRANSITIONS)
 
 
 # ===================================================================
@@ -375,7 +392,8 @@ class TestTaskTransitions:
             if target == TaskState.COMPLETED:
                 continue
             with pytest.raises(InvalidTransitionError):
-                validate_transition(TaskState.COMPLETED, target, VALID_TASK_TRANSITIONS)
+                validate_transition(TaskState.COMPLETED,
+                                    target, VALID_TASK_TRANSITIONS)
 
     def test_cancelled_is_terminal(self):
         """CANCELLED has no outgoing transitions."""
@@ -383,14 +401,18 @@ class TestTaskTransitions:
             if target == TaskState.CANCELLED:
                 continue
             with pytest.raises(InvalidTransitionError):
-                validate_transition(TaskState.CANCELLED, target, VALID_TASK_TRANSITIONS)
+                validate_transition(TaskState.CANCELLED,
+                                    target, VALID_TASK_TRANSITIONS)
 
     def test_escalated_can_resume_or_cancel(self):
         """ESCALATED → IN_PROGRESS (resume) and ESCALATED → CANCELLED."""
-        validate_transition(TaskState.ESCALATED, TaskState.IN_PROGRESS, VALID_TASK_TRANSITIONS)
-        validate_transition(TaskState.ESCALATED, TaskState.CANCELLED, VALID_TASK_TRANSITIONS)
+        validate_transition(TaskState.ESCALATED,
+                            TaskState.IN_PROGRESS, VALID_TASK_TRANSITIONS)
+        validate_transition(TaskState.ESCALATED,
+                            TaskState.CANCELLED, VALID_TASK_TRANSITIONS)
 
     def test_accepted_cannot_cancel_directly(self):
         """ACCEPTED can only go to IN_PROGRESS (no direct cancel)."""
         with pytest.raises(InvalidTransitionError):
-            validate_transition(TaskState.ACCEPTED, TaskState.CANCELLED, VALID_TASK_TRANSITIONS)
+            validate_transition(TaskState.ACCEPTED,
+                                TaskState.CANCELLED, VALID_TASK_TRANSITIONS)

@@ -18,7 +18,7 @@ function makeMessage(overrides: Partial<AgentMessage> = {}): AgentMessage {
   _seq += 1;
   return {
     id: `msg-${_seq}`,
-    agent_name: "Bed Coordinator Assistant",
+    agent_name: "Supply Coordinator",
     agent_role: "Supervisor",
     content: "Short status update.",
     intent_tag: "EXECUTE" as IntentTag,
@@ -30,16 +30,16 @@ function makeMessage(overrides: Partial<AgentMessage> = {}): AgentMessage {
 
 /* ── Test data ───────────────────────────────────────────────── */
 
-const SHORT_CONTENT = "Patient P-101 assigned to bed 4A-1."; // 36 chars, no newline
+const SHORT_CONTENT = "Scan SCAN-001 initiated for closet CLO-ICU-01."; // 47 chars, no newline
 const LONG_CONTENT =
-  "Patient P-101 has been triaged and requires immediate bed assignment in the cardiac unit. " +
-  "The predictive model indicates a 92% probability of overflow within the next two hours, " +
-  "so we should expedite cleaning of beds in Unit 4A and prepare transport for incoming patients.";
+  "Scan SCAN-001 has identified 3 items below par level in ICU Main Closet (CLO-ICU-01). " +
+  "Critical items include IV Saline (2 units remaining, par level 20) and Nitrile Gloves " +
+  "(5 boxes remaining, par level 30). Initiating vendor sourcing for immediate replenishment.";
 const LONG_SUMMARY =
-  "Patient P-101 has been triaged and requires immediate bed assignment in the cardiac unit.";
+  "Scan SCAN-001 has identified 3 items below par level in ICU Main Closet (CLO-ICU-01).";
 const MULTILINE_CONTENT =
-  "Bed 4A-2 is now READY after EVS cleaning.\nTransport has been scheduled for patient P-103.\nETA is 12 minutes.";
-const MULTILINE_SUMMARY = "Bed 4A-2 is now READY after EVS cleaning.";
+  "IV Saline restocked to par level after shipment SHP-001 delivered to ICU Main Closet.\nVendor sourcing confirmed for Nitrile Gloves.\nETA is 12 minutes.";
+const MULTILINE_SUMMARY = "IV Saline restocked to par level after shipment SHP-001 delivered to ICU Main Closet.";
 
 /** Find the chevron SVG inside a toggle button and check its rotation class. */
 function chevronHasRotate(button: HTMLElement): boolean {
@@ -140,7 +140,7 @@ describe("AgentConversation", () => {
     const user = userEvent.setup();
     const secondContent =
       "Second long message that also exceeds the one-hundred-and-twenty character threshold and should be collapsed initially. " +
-      "It contains additional detail about bed allocation beyond the summary.";
+      "It contains additional detail about inventory replenishment beyond the summary.";
     const msg1 = makeMessage({ id: "m1", content: LONG_CONTENT });
     const msg2 = makeMessage({ id: "m2", content: secondContent });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build (create/update) Azure AI Foundry agents for the bed-management demo.
+"""Build (create/update) Azure AI Foundry agents for the supply closet replenishment demo.
 
 Uses the v2 Azure AI Projects SDK: creates each agent as a named, versioned
 Foundry agent via ``agents.create_version()``.  At runtime the orchestrator
@@ -15,7 +15,7 @@ Requires env vars (one of):
 Optional:
     MODEL_DEPLOYMENT_NAME      — Model deployment to use (default: gpt-4.1)
     AGENT_MODEL_OVERRIDES      — JSON string of per-agent model overrides
-                                 Example: '{"evs-tasking":"gpt-5-mini"}'
+                                 Example: '{"supply-scanner":"gpt-5-mini"}'
 """
 
 import json
@@ -24,12 +24,11 @@ import sys
 from pathlib import Path
 
 AGENT_NAMES = [
-    "flow-coordinator",
-    "predictive-capacity",
-    "bed-allocation",
-    "evs-tasking",
-    "transport-ops",
-    "policy-safety",
+    "supply-coordinator",
+    "supply-scanner",
+    "catalog-sourcer",
+    "order-manager",
+    "compliance-gate",
 ]
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "src" / "api" / "app" / "agents" / "prompts"
@@ -103,7 +102,7 @@ def main() -> None:
             system_prompt = prompt_file.read_text().strip()
         else:
             print(f"  Warning: No prompt file for {agent_name}, using default", file=sys.stderr)
-            system_prompt = f"You are the {agent_name} agent for the hospital bed management system."
+            system_prompt = f"You are the {agent_name} agent for the hospital supply-closet replenishment system."
 
         tools = tool_defs.get(agent_name, [])
 
@@ -120,7 +119,7 @@ def main() -> None:
             version = agents_ops.create_version(
                 agent_name=agent_name,
                 definition=definition,
-                description=f"Bed management {agent_name} agent",
+                description=f"Supply closet replenishment {agent_name} agent",
             )
             print(f"  ✓ {agent_name} → version {version.id}")
         except Exception as exc:

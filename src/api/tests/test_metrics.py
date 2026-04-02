@@ -15,7 +15,7 @@ SAMPLE_METRICS = {
     "total_output_tokens": 200,
     "agents": [
         {
-            "agent_name": "bed-coordinator",
+            "agent_name": "supply-coordinator",
             "model": "simulated",
             "input_tokens": 300,
             "output_tokens": 100,
@@ -23,7 +23,7 @@ SAMPLE_METRICS = {
             "latency_seconds": 0.5,
         },
         {
-            "agent_name": "bed-allocation",
+            "agent_name": "order-manager",
             "model": "simulated",
             "input_tokens": 200,
             "output_tokens": 100,

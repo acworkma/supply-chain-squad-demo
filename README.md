@@ -1,54 +1,53 @@
-# Patient Flow & Bed Management — Agentic AI Demo
+# Supply Closet Replenishment — Agentic AI Demo
 
-> **Six AI agents. One patient flow. Zero manual coordination.**
+> **Five AI agents. One supply chain. Zero manual coordination.**
 
-Every hospital knows the bottleneck: a patient needs a bed, and what follows is a cascade of phone calls, pages, and whiteboard updates across admissions, housekeeping, transport, and nursing. Beds sit empty while teams play phone tag. Patients wait in the ED for hours.
+Every hospital knows the bottleneck: a supply closet runs low, and what follows is a cascade of manual counts, phone calls, and paper forms across nursing, procurement, and receiving. Shelves sit empty while teams scramble. Patients wait for basic supplies.
 
-This demo shows a different approach. **Six AI agents work together in real time** to handle the entire bed placement workflow — from the moment a patient needs a bed to the moment they arrive in it. No human coordination required. Every decision, every handoff, every contingency is visible in a live Control Tower dashboard.
+This demo shows a different approach. **Five AI agents work together in real time** to handle the entire supply closet replenishment workflow — from detecting a low-stock item to confirming delivery. No human coordination required. Every decision, every handoff, every contingency is visible in a live Control Tower dashboard.
 
 Built on [Microsoft Foundry](https://ai.azure.com/) and designed to run as a live, clickable demo.
 
 ## Meet the AI Team
 
-Each agent has a specific job in the patient flow, just like real hospital staff:
+Each agent has a specific job in the supply chain, just like real hospital staff:
 
 | Agent | What They Do |
 |-------|-------------|
-| **Bed Coordinator Assistant** | The central hub of the AI team. Aggregates signals from all agents, surfaces placement recommendations, and drives the workflow end-to-end. Every other agent reports back through the Bed Coordinator Assistant. |
-| **Predictive Capacity** | Looks at current bed availability, patient acuity, and unit fit to rank the best bed options. Thinks ahead — which beds are about to open? Which units are nearing capacity? |
-| **Bed Allocation** | Handles the actual reservation. Once a bed is chosen, Bed Allocation locks it down so no one else can claim it. |
-| **EVS Tasking** | The housekeeping dispatcher. If a bed needs cleaning or room prep before a patient can move in, EVS Tasking creates and tracks that work order. |
-| **Transport Ops** | Schedules the patient's physical move — from current location to their assigned bed. Manages priority and dispatch. |
-| **Policy & Safety** | The compliance check. Before any bed assignment is finalized, Policy & Safety validates it against isolation requirements, acuity rules, and safety constraints. Can block or escalate if something doesn't look right. |
+| **Supply Coordinator** | The central hub of the AI team. Aggregates signals from all agents, surfaces replenishment recommendations, and drives the workflow end-to-end. Every other agent reports back through the Supply Coordinator. |
+| **Supply Scanner** | Monitors current inventory levels, par levels, and consumption trends to identify items needing restock. Thinks ahead — which items are trending toward shortage? Which closets are nearing critical levels? |
+| **Catalog Sourcer** | Finds the best sourcing options for needed items. Checks approved vendor catalogs, pricing, lead times, and contract status to recommend the optimal purchase. |
+| **Order Manager** | Handles the actual purchase order lifecycle. Once a sourcing option is chosen, Order Manager creates the PO, tracks fulfillment, and confirms delivery. |
+| **Compliance Gate** | The compliance check. Before any order is finalized, Compliance Gate validates it against formulary rules, budget limits, and regulatory constraints. Can block or escalate if something doesn't look right. |
 
 ## The Demo Scenarios
 
-### ER Admission — Smooth Placement
+### Routine Restock — Smooth Replenishment
 
-A patient arrives in the ED needing admission. Watch the agents:
+A supply closet's par levels trigger a restock request. Watch the agents:
 
-1. **Bed Coordinator Assistant** picks up the request and asks Predictive Capacity to rank available beds
-2. **Predictive Capacity** scores and ranks the options
-3. **Policy & Safety** validates the top choice — no safety concerns
-4. **Bed Allocation** reserves the bed
-5. **Transport Ops** dispatches a transport team
-6. The patient moves through **Transport Ready → In Transit → Arrived**
-7. Bed status flips to **Occupied**
+1. **Supply Coordinator** picks up the request and asks Supply Scanner to assess inventory
+2. **Supply Scanner** identifies items below par and ranks urgency
+3. **Catalog Sourcer** finds optimal vendors and pricing
+4. **Compliance Gate** validates the order — no policy concerns
+5. **Order Manager** creates the purchase order and tracks delivery
+6. Items move through **PO Created → Approved → Shipped → Delivered**
+7. Inventory levels update to reflect restocked quantities
 
 The whole flow takes about 5 seconds. Every step is visible in the Agent Conversation panel.
 
-### Disruption + Replan — When Things Go Wrong
+### Critical Shortage — When Things Go Urgent
 
-Same scenario, but mid-workflow a bed gets **blocked** (water leak in the room). Watch the agents adapt:
+Same workflow, but a supply item hits **critical** level (below safety stock). Watch the agents adapt:
 
-1. The initial placement starts normally
-2. **EVS Tasking** detects the blockage and **escalates** to the Bed Coordinator Assistant
-3. **Policy & Safety** recommends a fallback bed
-4. **Bed Allocation** releases the blocked reservation and secures the new bed
-5. **Transport Ops** reschedules to the new destination
-6. The patient still arrives — just at a different bed
+1. The restock starts with elevated urgency
+2. **Supply Scanner** flags the critical shortage and **escalates** to the Supply Coordinator
+3. **Catalog Sourcer** searches for expedited sourcing options
+4. **Compliance Gate** fast-tracks approval for emergency procurement
+5. **Order Manager** creates an expedited PO with priority shipping
+6. The item is restocked — with expedited handling throughout
 
-This is the real showcase: **the agents don't just follow a script — they handle disruptions and replan on the fly.**
+This is the real showcase: **the agents don't just follow a script — they handle urgency levels and adapt their workflow accordingly.**
 
 ## Running the Demo
 
@@ -59,13 +58,12 @@ This is the real showcase: **the agents don't just follow a script — they hand
 
 Once it's running:
 
-1. The **Control Tower** loads with a pre-set hospital — 16 beds across three units on two campuses
+1. The **Control Tower** loads with a pre-set supply closet — items across multiple categories and vendors
 2. Use the **scenario dropdown** to select a demo:
-   - **Admissions:** ER Admission or OR Admission (post-surgical)
-   - **Disruptions:** Disruption + Replan or EVS-Gated Placement
-   - **Transfers:** Unit Transfer
+   - **Routine Restock:** Standard par-level replenishment
+   - **Critical Shortage:** Expedited procurement for urgent items
 3. Click **"Reset"** between scenarios to restore the initial state
-4. Watch the **left panel** (beds updating), **upper right** (agent conversation), and **lower right** (event timeline)
+4. Watch the **left panel** (inventory updating), **upper right** (agent conversation), and **lower right** (event timeline)
 
 ## Learn More
 

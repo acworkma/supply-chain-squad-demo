@@ -1,6 +1,6 @@
 using './main.bicep'
 
-param environmentName = readEnvironmentVariable('AZURE_ENV_NAME', 'bedmgmt')
+param environmentName = readEnvironmentVariable('AZURE_ENV_NAME', 'supplycloset')
 param location = readEnvironmentVariable('AZURE_LOCATION', 'eastus2')
 param modelName = 'gpt-4.1'
 

@@ -1,4 +1,4 @@
-"""Patient Flow / Bed Management API — FastAPI application."""
+"""Supply Closet Replenishment API — FastAPI application."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Patient Flow / Bed Management API",
+    title="Supply Closet Replenishment API",
     version="0.1.0",
     lifespan=lifespan,
 )

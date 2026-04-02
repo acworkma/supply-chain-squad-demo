@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bed-management-api"
+name = "supply-closet-api"
 version = "0.1.0"
-description = "Patient Flow / Bed Management — Agentic AI Demo API"
+description = "Supply Closet Replenishment — Agentic AI Demo API"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]",

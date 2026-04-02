@@ -111,7 +111,8 @@ class TestPOStateEnum:
 
 class TestPOApprovalStatusEnum:
 
-    EXPECTED_VALUES = {"AUTO_APPROVED", "PENDING_HUMAN", "HUMAN_APPROVED", "HUMAN_REJECTED"}
+    EXPECTED_VALUES = {"AUTO_APPROVED", "PENDING_HUMAN",
+                       "HUMAN_APPROVED", "HUMAN_REJECTED"}
 
     def test_all_expected_values_exist(self):
         actual = {s.value for s in POApprovalStatus}
@@ -164,7 +165,8 @@ class TestVendorStockStatusEnum:
 class TestShipmentStateEnum:
     """ShipmentState must contain exactly the 5 states."""
 
-    EXPECTED_VALUES = {"CREATED", "SHIPPED", "IN_TRANSIT", "DELIVERED", "DELAYED"}
+    EXPECTED_VALUES = {"CREATED", "SHIPPED",
+                       "IN_TRANSIT", "DELIVERED", "DELAYED"}
 
     def test_all_expected_values_exist(self):
         actual = {s.value for s in ShipmentState}
