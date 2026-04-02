@@ -90,9 +90,9 @@ class TestGetSnapshot:
         snapshot = seeded_state_store.get_snapshot()
         assert "closets" in snapshot
 
-    def test_snapshot_has_items_key(self, seeded_state_store: StateStore):
+    def test_snapshot_has_supply_items_key(self, seeded_state_store: StateStore):
         snapshot = seeded_state_store.get_snapshot()
-        assert "items" in snapshot
+        assert "supply_items" in snapshot
 
     def test_snapshot_has_vendors_key(self, seeded_state_store: StateStore):
         snapshot = seeded_state_store.get_snapshot()
@@ -141,7 +141,7 @@ class TestGetSnapshot:
         snapshot = state_store.get_snapshot()
         assert isinstance(snapshot, dict)
         assert len(snapshot.get("closets", {})) == 0
-        assert len(snapshot.get("items", {})) == 0
+        assert len(snapshot.get("supply_items", {})) == 0
 
 
 class TestClear:

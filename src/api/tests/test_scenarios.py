@@ -274,4 +274,4 @@ class TestScenarioEdgeCases:
 
         state = (await test_client.get("/api/state")).json()
         assert len(state["closets"]) == 5
-        assert len(state["items"]) == 10
+        assert len(state["supply_items"]) == 10

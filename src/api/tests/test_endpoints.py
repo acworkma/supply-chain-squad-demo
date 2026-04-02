@@ -37,7 +37,7 @@ class TestStateEndpoint:
     async def test_state_has_expected_keys(self, test_client: AsyncClient):
         resp = await test_client.get("/api/state")
         data = resp.json()
-        for key in ("closets", "items", "vendors", "catalog", "scans", "purchase_orders", "shipments"):
+        for key in ("closets", "supply_items", "vendors", "catalog", "scans", "purchase_orders", "shipments"):
             assert key in data, f"Missing key: {key}"
 
     async def test_state_closets_are_dict(self, test_client: AsyncClient):
@@ -49,7 +49,7 @@ class TestStateEndpoint:
         resp = await test_client.get("/api/state")
         data = resp.json()
         assert len(data["closets"]) == 5
-        assert len(data["items"]) == 10
+        assert len(data["supply_items"]) == 10
 
 
 # ===================================================================

@@ -277,7 +277,7 @@ class StateStore:
         """Return all state as a serializable dict for ``GET /api/state``."""
         return {
             "closets": {k: v.model_dump(mode="json") for k, v in self.closets.items()},
-            "items": {k: v.model_dump(mode="json") for k, v in self.items.items()},
+            "supply_items": {k: v.model_dump(mode="json") for k, v in self.items.items()},
             "vendors": {k: v.model_dump(mode="json") for k, v in self.vendors.items()},
             "catalog": {k: v.model_dump(mode="json") for k, v in self.catalog.items()},
             "scans": {k: v.model_dump(mode="json") for k, v in self.scans.items()},
