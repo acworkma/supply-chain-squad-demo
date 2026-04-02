@@ -1,4 +1,0 @@
-### 2026-04-02: Supply Chain Domain Model — Models Layer Complete
-**By:** Goose
-**What:** Rewrote all 4 model files (`enums.py`, `entities.py`, `events.py`, `transitions.py`) plus `__init__.py` to supply-chain domain per Maverick's design spec. Old bed-management types (`Bed`, `Patient`, `Transport`, `Reservation`, `BedState`, `PatientState`, `TransportPriority`, `AdmissionSource`) are fully removed. New types (`Order`, `Product`, `Shipment`, `Allocation`, `OrderState`, `ProductState`, `ShipmentState`, `FulfillmentPriority`, `SourceChannel`, `OrderItem`) are in place. All downstream consumers (`state/store.py`, `tools/`, `routers/`, `orchestrator.py`, tests) will fail on import until they're updated to use the new names.
-**Why:** Phase 3 domain pivot — 1:1 mapping from bed management to supply chain fulfillment.

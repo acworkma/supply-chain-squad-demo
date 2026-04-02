@@ -100,19 +100,49 @@
 - Long-running mode where patients arrive every X minutes until Stop or divert. Design questions raised, awaiting acworkma's answers before implementation begins.
 
 ### DOMAIN-P3-001: Supply Chain Domain Model
-- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Implementing
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** ~~Implementing~~ SUPERSEDED by DOMAIN-C-001
 - Full domain pivot from bed management → supply chain (distribution/fulfillment center). 1:1 entity mapping: Patient→Order, Bed→Product, Task→Task, Transport→Shipment, Reservation→Allocation. New enums: OrderState (9 states), ProductState (6 states), ShipmentState (7 states), TaskType (PICK/PACK/QUALITY_CHECK/RESTOCK), FulfillmentPriority (EXPEDITED/HIGH/STANDARD), SourceChannel (ECOMMERCE/WHOLESALE/RETAIL/RETURNS). TaskState and IntentTag unchanged. 10 tools (1:1 mapping). Config: 2 warehouses (east-dc, west-dc), 3 zones (Zone-A Electronics, Zone-B General, Zone-C General). Seed data: 16 products, 5 existing orders. 3 scenarios: standard-fulfillment, supplier-delay, rush-order. All 10 ADRs preserved unchanged.
 - **Design doc:** `.squad/decisions/inbox/maverick-supply-chain-domain-model.md` (archived)
 
 ### DOMAIN-P3-002: Supply Chain Agent Roster
-- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Implementing
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** ~~Implementing~~ SUPERSEDED by DOMAIN-C-002
 - 6 agents → 6 agents, 1:1 mapping. bed-coordinator→supply-coordinator, predictive-capacity→demand-forecaster, bed-allocation→inventory-allocator, evs-tasking→warehouse-ops, transport-ops→logistics-planner, policy-safety→compliance-monitor. Same supervisor pattern (ADR-004). Per-agent tool sets defined. Prompt files renamed accordingly.
 - **Design doc:** `.squad/decisions/inbox/maverick-supply-chain-agent-roster.md` (archived)
 
 ### PLAN-P3-001: Phase 3 Work Item Decomposition — 17 WIs
-- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** In Progress
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** ~~In Progress~~ SUPERSEDED by PLAN-C-001
 - 17 WIs: Goose 9 (WI-P3-001 through WI-P3-009, critical path), Viper 4 (WI-P3-011 through WI-P3-014), Iceman 2 (WI-P3-016, WI-P3-017), Jester 2 (WI-P3-010, WI-P3-015). Critical path: enums→entities→transitions→store→tools→schemas→prompts→orchestrator→scenarios→tests. UI parallelizable after store stabilizes.
 - **Design doc:** `.squad/decisions/inbox/maverick-phase3-work-items.md` (archived)
+
+### DOMAIN-C-001: Supply Closet Replenishment — Domain Model
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Implementing
+- **Supersedes:** DOMAIN-P3-001 (fulfillment center model)
+- Full domain pivot from distribution/fulfillment center → hospital supply closet replenishment. Target audience: hospital supply chain directors. Core workflow: Scan → Analyze → Source → Order → Approve → Fulfill. 8 entities: SupplyCloset, SupplyItem, Vendor, CatalogEntry, PurchaseOrder, POLineItem, ScanResult, Shipment. 9 enums: ItemCategory (8 values), ItemCriticality (3), ContractTier (3), POState (8), POApprovalStatus (4), ScanState (7), VendorStockStatus (4), ShipmentState (5), plus TaskState/IntentTag unchanged. Seed data: 1 closet (CLOSET-3N), 15 supply items with par levels, 3 vendors (MedLine, Cardinal, McKesson), 15 catalog entries. 2 scenarios: routine-restock, critical-shortage. All 10 ADRs preserved unchanged.
+- **Design doc:** `.squad/decisions/inbox/maverick-closet-domain-model.md`
+
+### DOMAIN-C-002: Supply Closet Replenishment — Agent Roster (5 Agents)
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Implementing
+- **Supersedes:** DOMAIN-P3-002 (fulfillment center agent roster)
+- 6 agents → 5 agents. supply-coordinator (supervisor), supply-scanner (vision/detection), catalog-sourcer (vendor lookup), order-manager (PO creation), compliance-gate (approval/policy). Logistics-planner removed — shipping merged into order-manager. Same supervisor pattern (ADR-004). 13 tools across 5 agents. Compliance gate: $1,000 auto-approval threshold, human-in-the-loop for POs exceeding threshold (NEW concept).
+- **Design doc:** `.squad/decisions/inbox/maverick-closet-agent-roster.md`
+
+### PLAN-C-001: Supply Closet Work Item Decomposition — 20 WIs
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** In Progress
+- **Supersedes:** PLAN-P3-001 (fulfillment center 17 WIs)
+- 20 WIs: Goose 11 (WI-C-001 through WI-C-011, critical path), Viper 5 (WI-C-013 through WI-C-017), Jester 2 (WI-C-012, WI-C-018), Iceman 2 (WI-C-019, WI-C-020). Critical path: enums→entities+events+transitions→store→tools+routers→schemas+prompts→orchestrator→scenarios→tests. UI parallelizable after store stabilizes. 3 new WIs for human-in-the-loop UI components (VendorChoiceCard, HumanApprovalCard).
+- **Design doc:** `.squad/decisions/inbox/maverick-closet-work-items.md`
+
+### IMPL-C-001: Foundation Layer — Models Rewrite (WI-C-001 through WI-C-004)
+- **Author:** Goose | **Date:** 2026-04-02 | **Status:** In Progress
+- Rewriting enums.py, entities.py, events.py, transitions.py for closet domain. Previous fulfillment center types (Order, Product, OrderState, ProductState, FulfillmentPriority, SourceChannel) being replaced with closet types (PurchaseOrder, SupplyItem, POState, ScanState, ItemCategory, ItemCriticality, ContractTier). State store rewrite (WI-C-005) follows after models layer lands.
+
+### IMPL-C-002: State Store Rewrite Context
+- **Author:** Goose | **Date:** 2026-04-02 | **Status:** Pending (blocked by WI-C-001 through WI-C-004)
+- Previous supply chain state store (SUPPLY_CHAIN_CONFIG, 16 products, 5 orders, 2 warehouses) will be replaced by closet state store (CLOSET_CONFIG, 15 supply items, 1 closet, 3 vendors, 15 catalog entries). Downstream consumers (orchestrator, tool_functions, routers/state) will break at import until updated.
+
+### TEST-C-001: Test Infrastructure Prep
+- **Author:** Jester | **Date:** 2026-04-02 | **Status:** In Progress (parallel prep)
+- Updated conftest.py, test_models.py, test_transitions.py to use closet domain entities and enums. Tests will fail on import until Goose lands WI-C-001 + WI-C-002. Estimated ~245 tests across both files once runnable.
 
 ## Governance
 

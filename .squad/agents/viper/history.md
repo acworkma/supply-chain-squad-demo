@@ -76,3 +76,17 @@
 - **Phase 3 supply chain pivot initiated.** Maverick designed full domain model — see decisions.md DOMAIN-P3-001, DOMAIN-P3-002, PLAN-P3-001.
 - Viper assigned WI-P3-011 through WI-P3-014 (InventoryBoard, OrderQueue, ShipmentTracker, CommandCenter wiring). BedBoard→InventoryBoard, PatientQueue→OrderQueue, TransportQueue→ShipmentTracker.
 - Goose is rewriting backend domain model (critical path). Jester prepping test fixtures. TypeScript types need to mirror new Pydantic models once Goose lands WI-P3-001.
+
+### 2026-04-02: WI-P3-012 + WI-P3-013 — OrderQueue + ShipmentTracker
+
+- **PatientQueue.tsx → OrderQueue** — Complete rewrite. Exports `OrderQueue` component. Props: `{ orders: Order[]; loading: boolean; error: string | null }`. Table columns: Customer, Order #, State, Priority, Channel, Destination, Items, ETA. Sort by priority rank (EXPEDITED=0, HIGH=1, STANDARD=2 via `priorityRank` map), then oldest `created_at`. State badge via `orderStateBadge()`, priority badge via `fulfillmentPriorityBadge()`. Items column shows count with singular/plural ("1 item" / "3 items"). ETA shows `{n}d` or "—" for null. Uses `ShoppingCart` icon.
+- **TransportQueue.tsx → ShipmentTracker** — Complete rewrite. Exports `ShipmentTracker` component. Props: `{ shipments: Shipment[]; orders: Record<string, Order>; loading: boolean; error: string | null }`. Card-style list layout. Each card: carrier badge (teal accent), route with ArrowRight, customer name from orders lookup (fallback to order_id), tracking number in mono font, state badge via `shipmentStateBadge()` with human-readable labels (including "Delayed ⚠️"), scheduled date formatted as "Mon DD". Uses `Truck` icon.
+- **Both components error-free** — no type errors in the rewritten files. Pre-existing errors in ControlTower.tsx and useApi.ts are expected (WI-P3-014 scope).
+- **Design patterns preserved**: same dark-theme tower-* tokens, error→loading→empty→data state flow, hover transitions, monospace for data fields, compact text-xs sizing, `cn()` for conditional classes.
+
+### 2026-04-02: WI-P3-014 — CommandCenter Wiring (4 files)
+- **`useApi.ts` rewritten** — Imports supply chain types (Product, Order, Task, Shipment, Allocation, FulfillmentConfig). State keys: products, orders, tasks, shipments, allocations, fulfillmentConfig. Maps `data.fulfillment_config` from API (snake_case) to `fulfillmentConfig` (camelCase).
+- **`ControlTower.tsx` rewritten** — Icons: ShoppingCart, Package, Truck. Components imported by new names from old file paths (`OrderQueue` from PatientQueue.tsx, `InventoryBoard` from BedBoard.tsx, `ShipmentTracker` from TransportQueue.tsx). Left column: Order Queue → Inventory Board (flex-[2]) → Shipment Tracker. Middle + right columns unchanged (domain-agnostic). ShipmentTracker receives `orders` as Record (not array) for lookup.
+- **`ScenarioToolbar.tsx`** — Replaced 5 hospital scenarios (ER/OR Admission, Disruption+Replan, EVS-Gated, Unit Transfer) with 3 supply chain scenarios: Standard Fulfillment, Rush Order, Supplier Delay.
+- **`AgentDirectory.tsx`** — Replaced 6 hospital agents with 6 supply chain agents: supply-coordinator, demand-forecaster, inventory-allocator, warehouse-ops, logistics-planner, compliance-monitor. Names match agent keywords in `colors.ts`.
+- **Key alignment**: StateResponse uses `fulfillment_config` (not `supply_chain_config`). InventoryBoard prop is `fulfillmentConfig` (not `supplyChainConfig`). Overrode task spec where type definitions differed. TypeScript compiles clean.

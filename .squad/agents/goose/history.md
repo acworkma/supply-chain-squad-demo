@@ -107,3 +107,25 @@
 - **Phase 3 supply chain pivot initiated.** Maverick designed full domain model — see decisions.md DOMAIN-P3-001, DOMAIN-P3-002, PLAN-P3-001.
 - Goose assigned WI-P3-001 through WI-P3-009 (critical path). Viper working TypeScript types + UI (WI-P3-011). Jester has test fixtures ready and waiting for domain code to land.
 - All 10 ADRs unchanged. Architecture stays — only domain nouns change.
+
+### 2026-04-02: WI-P3-003 — State Store Rewrite (Supply Chain)
+- Full rewrite of `src/api/app/state/store.py`: replaced all hospital/bed-management domain with supply-chain domain
+- **Config:** `HOSPITAL_CONFIG` → `SUPPLY_CHAIN_CONFIG` with 3 warehouses (east-dc, west-dc, central-dc), zone lists, cold_chain flags
+- **Helpers:** `get_unit_for_diagnosis` → `get_warehouse_for_product(product_id, store)`, `get_campus_for_unit` → `get_warehouses_with_cold_chain()`
+- **StateStore collections:** `beds/patients/transports/reservations` → `products/orders/shipments/allocations`. `tasks` unchanged.
+- **Getters:** 1:1 mapping with same `Optional[Callable]` filter pattern preserved. `get_active_reservations` → `get_active_allocations`.
+- **Transitions:** `transition_bed` → `transition_product` (ProductState, VALID_PRODUCT_TRANSITIONS), `transition_patient` → `transition_order` (OrderState, VALID_ORDER_TRANSITIONS), `transition_transport` → `transition_shipment` (ShipmentState, VALID_SHIPMENT_TRANSITIONS). `transition_task` unchanged.
+- **Seed data:** 16 products across 3 warehouses (Electronics, Home & Garden, Cold Chain, General Merchandise); realistic state mix (AVAILABLE, LOW_STOCK, OUT_OF_STOCK, ON_HOLD). 5 orders (DELIVERED, SHIPPED, ALLOCATED, VALIDATED, PENDING) with OrderItem lists. Product IDs like `PROD-TV55-EA`, Order IDs like `ORD-EXIST-01`.
+- **`__init__.py` updated:** exports `get_warehouse_for_product` and `get_warehouses_with_cold_chain` instead of old helpers.
+- **Downstream breakage:** `orchestrator.py` (imports `get_campus_for_unit`, `HOSPITAL_CONFIG`), `tool_functions.py` (imports `get_unit_for_diagnosis`, `get_campus_for_unit`), `routers/state.py` (imports `HOSPITAL_CONFIG`). These need updates in WI-P3-004+.
+
+### 2026-04-02: WI-P3-004 + WI-P3-005 — Tool Functions + Tool Schemas Rewrite (Supply Chain)
+- Full rewrite of `src/api/app/tools/tool_functions.py`: 10 functions replacing all hospital/bed-management tools
+- **Read-only tools (3):** `get_patient` → `get_order`, `get_beds` → `get_products` (filters: warehouse_id, state, category), `get_tasks` unchanged (same filter pattern)
+- **Mutation tools (7):** `reserve_bed` → `allocate_inventory` (quantity-based with net-available check, auto-transitions product state to ALLOCATED or LOW_STOCK), `release_bed_reservation` → `release_allocation` (deactivates allocation, decrements quantity_allocated, auto-transitions state back), `create_task` updated (FulfillmentPriority, WAREHOUSE_TASK_CREATED event, "warehouse-ops" agent), `update_task` updated (TASK_STATUS_CHANGED event, "warehouse-ops" agent), `schedule_transport` → `schedule_shipment` (order-based, auto-carrier selection by CARRIER_BY_PRIORITY dict, TRK-prefix tracking numbers), `publish_event` unchanged, `escalate` updated ("compliance-monitor" agent)
+- **Key patterns:** All mutation tools follow validate→mutate→emit→message→return. `**_kwargs` on read-only tools for forward compat. Auto state transitions wrapped in try/except to handle invalid transitions gracefully.
+- Full rewrite of `src/api/app/tools/tool_schemas.py`: 10 OpenAI function-calling schemas with updated enums
+- **Per-agent tool sets:** 6 agents mapped: supply-coordinator, demand-forecaster, inventory-allocator, warehouse-ops, logistics-planner, compliance-monitor. AGENT_TOOLS_V2 FunctionTool conversion preserved.
+- Updated `src/api/app/tools/__init__.py` with new exports.
+- All 10 functions + 10 schemas + 6 agent tool sets + 6 v2 sets import cleanly verified.
+- **Downstream breakage remaining:** `orchestrator.py` dispatch table, `routers/scenarios.py`, `routers/state.py`, and all tests still reference old function/schema names.

@@ -87,3 +87,38 @@
 - `.squad/decisions/inbox/maverick-supply-chain-domain-model.md` — full domain model with entities, enums, events, transitions, tools, seed data, and 3 scenarios
 - `.squad/decisions/inbox/maverick-supply-chain-agent-roster.md` — 6 agents with roles, tools, prompts, interaction flows
 - `.squad/decisions/inbox/maverick-phase3-work-items.md` — 17 WIs with owners, dependencies, and critical path
+
+### 2026-04-02 — Domain Pivot #2: Supply Closet Replenishment
+
+**Major pivot:** Distribution/fulfillment center → hospital supply closet replenishment. Audience is hospital supply chain directors. All 10 ADRs preserved unchanged (third domain on same architecture).
+
+**New domain model:**
+- Core flow: **Scan → Analyze → Source → Order → Approve → Fulfill**
+- Entities: SupplyCloset, SupplyItem (with par_level, consumption_rate, criticality), Vendor (3 real healthcare vendors), CatalogEntry (tiered pricing: GPO→Preferred→Spot), PurchaseOrder (with $1k approval threshold), POLineItem, ScanResult (with ReorderItem including days_until_stockout), Shipment (simplified)
+- Removed: Order, OrderItem, Product, Task, Allocation (fulfillment center entities)
+- New enums: ItemCategory (8), ItemCriticality (3), ContractTier (3), POState (8), POApprovalStatus (4), ScanState (7), VendorStockStatus (4), ShipmentState (5 simplified)
+- 17 event types covering full scan→approve→fulfill workflow
+- 13 tool functions (up from 10)
+- Seed data: 1 closet (3-North), 15 healthcare items with realistic par levels/consumption rates, 3 vendors (MedLine, Cardinal, McKesson) with overlapping catalogs
+
+**Agents: 6 → 5.** supply-coordinator (supervisor), supply-scanner (vision/detection), catalog-sourcer (vendor lookup), order-manager (PO creation), compliance-gate (approval/policy). Logistics-planner removed — shipping is part of the order flow now.
+
+**Key new concept: Human-in-the-loop (first-class).** Two interaction points:
+1. Out-of-stock vendor → user chooses alternate vendor (POST /api/scan/{id}/resolve-stockout)
+2. PO over $1,000 → user approves/rejects (POST /api/po/{id}/approve)
+Both modeled as workflow pauses with interactive UI cards in the agent conversation panel.
+
+**Two scenarios:**
+1. Routine Restock — smooth flow, 5 items below par, 2 POs to 2 vendors, both auto-approved
+2. Critical Shortage — IV kits critically low (0.67 days), gloves out of stock at primary vendor, PO crosses $1k threshold, two human-in-the-loop points
+
+**Consumption rate intelligence is the headline:** "You'll run out of IV Start Kits in 1.3 days" — this is what makes the scanner agent compelling for hospital supply chain directors.
+
+**Key insight from scenarios router:** `src/api/app/routers/scenarios.py` still imports Patient, BedState, PatientState from the ORIGINAL bed management domain. It was never updated during the fulfillment center pivot. Needs full rewrite regardless.
+
+**Work items: 20 WIs** (up from 17). 11 for Goose (all critical path), 5 for Viper (including 2 new human-in-the-loop card components), 2 for Jester, 2 for Iceman. Recommended Goose batch: (001-004), (005-006), (007-008), (009-010) = 4 batches.
+
+**Deliverables:**
+- `.squad/decisions/inbox/maverick-closet-domain-model.md` — full domain model, entities, enums, events, transitions, tools, seed data, 2 scenarios with flow details
+- `.squad/decisions/inbox/maverick-closet-agent-roster.md` — 5 agents with per-agent tools, prompt guidelines, interaction flow diagrams for both scenarios, $1k threshold logic, human-in-the-loop patterns with UI card mockups
+- `.squad/decisions/inbox/maverick-closet-work-items.md` — 20 WIs with owners, dependencies, critical path, strategy (rewrite from current state)
