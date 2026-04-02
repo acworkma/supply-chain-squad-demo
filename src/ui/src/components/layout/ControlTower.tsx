@@ -1,9 +1,9 @@
-import { Users, BedDouble, Truck, MessageSquare, Activity, Network } from "lucide-react";
+import { ShoppingCart, Package, Truck, MessageSquare, Activity, Network } from "lucide-react";
 import { PaneHeader } from "@/components/layout/PaneHeader";
 import { ScenarioToolbar } from "@/components/layout/ScenarioToolbar";
-import { PatientQueue } from "@/components/dashboard/PatientQueue";
-import { BedBoard } from "@/components/dashboard/BedBoard";
-import { TransportQueue } from "@/components/dashboard/TransportQueue";
+import { OrderQueue } from "@/components/dashboard/PatientQueue";
+import { InventoryBoard } from "@/components/dashboard/BedBoard";
+import { ShipmentTracker } from "@/components/dashboard/TransportQueue";
 import { AgentNetwork } from "@/components/dashboard/AgentNetwork";
 import { AgentDirectory } from "@/components/dashboard/AgentDirectory";
 import { AgentConversation } from "@/components/conversation/AgentConversation";
@@ -15,7 +15,7 @@ import type { Event, AgentMessage } from "@/types/api";
 import { useCallback, useState } from "react";
 
 export function ControlTower() {
-  const { beds, patients, transports, hospitalConfig, loading, error } = useApi();
+  const { supplyItems, purchaseOrders, shipments, closets, loading, error } = useApi();
   const { items: events, connected: eventsConnected, clear: clearEvents } = useSSE<Event>("/api/events/stream");
   const { items: messages, connected: messagesConnected, clear: clearMessages } = useSSE<AgentMessage>("/api/agent-messages/stream");
 
@@ -27,9 +27,9 @@ export function ControlTower() {
     clearMessages();
   }, [clearEvents, clearMessages]);
 
-  const patientList = Object.values(patients);
-  const bedList = Object.values(beds);
-  const transportList = Object.values(transports);
+  const itemList = Object.values(supplyItems);
+  const poList = Object.values(purchaseOrders);
+  const shipmentList = Object.values(shipments);
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col">
@@ -45,27 +45,27 @@ export function ControlTower() {
       )}>
       {/* ── Left Pane: Ops Dashboard ── */}
       <div className="flex flex-col gap-2 overflow-hidden">
-        {/* Patient Queue */}
+        {/* Purchase Orders */}
         <section className="flex flex-col rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
-          <PaneHeader icon={Users} title="Patient Queue" badge={patientList.length || undefined} />
+          <PaneHeader icon={ShoppingCart} title="Purchase Orders" badge={poList.length || undefined} />
           <div className="overflow-y-auto flex-1">
-            <PatientQueue patients={patientList} loading={loading} error={error} />
+            <OrderQueue purchaseOrders={poList} loading={loading} error={error} />
           </div>
         </section>
 
-        {/* Bed Board — takes the most space */}
+        {/* Closet Inventory — takes the most space */}
         <section className="flex flex-col flex-[2] rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
-          <PaneHeader icon={BedDouble} title="Bed Board" badge={bedList.length || undefined} />
+          <PaneHeader icon={Package} title="Closet Inventory" badge={itemList.length || undefined} />
           <div className="overflow-y-auto flex-1">
-            <BedBoard beds={bedList} patients={patients} hospitalConfig={hospitalConfig} loading={loading} error={error} />
+            <InventoryBoard supplyItems={itemList} loading={loading} error={error} />
           </div>
         </section>
 
-        {/* Transport Queue — compact */}
+        {/* Shipment Tracker — compact */}
         <section className="flex flex-col min-h-[100px] rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
-          <PaneHeader icon={Truck} title="Transport Queue" badge={transportList.length || undefined} />
+          <PaneHeader icon={Truck} title="Shipment Tracker" badge={shipmentList.length || undefined} />
           <div className="overflow-y-auto flex-1">
-            <TransportQueue transports={transportList} patients={patients} loading={loading} error={error} />
+            <ShipmentTracker shipments={shipmentList} loading={loading} error={error} />
           </div>
         </section>
       </div>

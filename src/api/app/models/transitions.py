@@ -1,6 +1,6 @@
-"""State-machine transition validation for beds, patients, and tasks."""
+"""State-machine transition validation for scans, purchase orders, shipments, and tasks."""
 
-from .enums import BedState, PatientState, TaskState
+from .enums import POState, ScanState, ShipmentState, TaskState
 
 
 class InvalidTransitionError(Exception):
@@ -15,24 +15,36 @@ class InvalidTransitionError(Exception):
         )
 
 
-# ── Bed state machine ──────────────────────────────────────────────
-VALID_BED_TRANSITIONS: dict[BedState, set[BedState]] = {
-    BedState.OCCUPIED: {BedState.DIRTY, BedState.BLOCKED},
-    BedState.DIRTY: {BedState.CLEANING, BedState.BLOCKED},
-    BedState.CLEANING: {BedState.READY, BedState.BLOCKED},
-    BedState.READY: {BedState.RESERVED, BedState.OCCUPIED, BedState.BLOCKED},
-    BedState.RESERVED: {BedState.OCCUPIED, BedState.READY, BedState.BLOCKED},
-    BedState.BLOCKED: {BedState.DIRTY},
+# ── Scan state machine ─────────────────────────────────────────────
+VALID_SCAN_TRANSITIONS: dict[ScanState, set[ScanState]] = {
+    ScanState.INITIATED:        {ScanState.ANALYZING},
+    ScanState.ANALYZING:        {ScanState.ITEMS_IDENTIFIED},
+    ScanState.ITEMS_IDENTIFIED: {ScanState.SOURCING},
+    ScanState.SOURCING:         {ScanState.ORDERING},
+    ScanState.ORDERING:         {ScanState.PENDING_APPROVAL, ScanState.COMPLETE},
+    ScanState.PENDING_APPROVAL: {ScanState.COMPLETE},
+    ScanState.COMPLETE:         set(),
 }
 
-# ── Patient state machine ──────────────────────────────────────────
-VALID_PATIENT_TRANSITIONS: dict[PatientState, set[PatientState]] = {
-    PatientState.AWAITING_BED: {PatientState.BED_ASSIGNED},
-    PatientState.BED_ASSIGNED: {PatientState.TRANSPORT_READY, PatientState.AWAITING_BED},
-    PatientState.TRANSPORT_READY: {PatientState.IN_TRANSIT},
-    PatientState.IN_TRANSIT: {PatientState.ARRIVED},
-    PatientState.ARRIVED: {PatientState.DISCHARGED},
-    PatientState.DISCHARGED: set(),
+# ── Purchase order state machine ───────────────────────────────────
+VALID_PO_TRANSITIONS: dict[POState, set[POState]] = {
+    POState.CREATED:          {POState.PENDING_APPROVAL, POState.APPROVED},
+    POState.PENDING_APPROVAL: {POState.APPROVED, POState.CANCELLED},
+    POState.APPROVED:         {POState.SUBMITTED},
+    POState.SUBMITTED:        {POState.CONFIRMED},
+    POState.CONFIRMED:        {POState.SHIPPED},
+    POState.SHIPPED:          {POState.RECEIVED},
+    POState.RECEIVED:         set(),
+    POState.CANCELLED:        set(),
+}
+
+# ── Shipment state machine ─────────────────────────────────────────
+VALID_SHIPMENT_TRANSITIONS: dict[ShipmentState, set[ShipmentState]] = {
+    ShipmentState.CREATED:    {ShipmentState.SHIPPED},
+    ShipmentState.SHIPPED:    {ShipmentState.IN_TRANSIT, ShipmentState.DELAYED},
+    ShipmentState.IN_TRANSIT: {ShipmentState.DELIVERED, ShipmentState.DELAYED},
+    ShipmentState.DELAYED:    {ShipmentState.IN_TRANSIT, ShipmentState.DELIVERED},
+    ShipmentState.DELIVERED:  set(),
 }
 
 # ── Task state machine ─────────────────────────────────────────────
@@ -47,18 +59,20 @@ VALID_TASK_TRANSITIONS: dict[TaskState, set[TaskState]] = {
 
 
 def validate_transition(
-    current: BedState | PatientState | TaskState,
-    target: BedState | PatientState | TaskState,
+    current: ScanState | POState | ShipmentState | TaskState,
+    target: ScanState | POState | ShipmentState | TaskState,
     valid_map: dict,
 ) -> None:
     """Validate that *current* → *target* is a legal transition.
 
     Raises ``InvalidTransitionError`` when the transition is not in *valid_map*.
     """
-    if isinstance(current, BedState):
-        entity_type = "bed"
-    elif isinstance(current, PatientState):
-        entity_type = "patient"
+    if isinstance(current, ScanState):
+        entity_type = "scan"
+    elif isinstance(current, POState):
+        entity_type = "purchase_order"
+    elif isinstance(current, ShipmentState):
+        entity_type = "shipment"
     elif isinstance(current, TaskState):
         entity_type = "task"
     else:

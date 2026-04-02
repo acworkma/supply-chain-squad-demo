@@ -1,4 +1,4 @@
-"""Event type definitions and the base Event model."""
+"""Event type definitions and the base Event model for the supply-closet replenishment domain."""
 
 from datetime import datetime, timezone
 from typing import Optional
@@ -10,22 +10,32 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# ── Event-type string constants (spec §8) ──────────────────────────
-PATIENT_BED_REQUEST_CREATED = "PatientBedRequestCreated"
-PREDICTION_GENERATED = "PredictionGenerated"
-ASSIGNMENT_VALIDATED = "AssignmentValidated"
-BED_RESERVED = "BedReserved"
-FALLBACK_PLAN_SET = "FallbackPlanSet"
-EVS_TASK_CREATED = "EVSTaskCreated"
-EVS_TASK_STATUS_CHANGED = "EVSTaskStatusChanged"
-BED_STATE_CHANGED = "BedStateChanged"
-TRANSPORT_SCHEDULED = "TransportScheduled"
-TRANSPORT_STARTED = "TransportStarted"
-TRANSPORT_COMPLETED = "TransportCompleted"
-PATIENT_STATE_CHANGED = "PatientStateChanged"
-SLA_RISK_DETECTED = "SlaRiskDetected"
-RESERVATION_RELEASED = "ReservationReleased"
-TRANSPORT_RESCHEDULED = "TransportRescheduled"
+# ── Scan lifecycle ──────────────────────────────────────────────────
+CLOSET_SCAN_INITIATED = "ClosetScanInitiated"
+CLOSET_SCAN_ANALYZED = "ClosetScanAnalyzed"
+ITEMS_BELOW_PAR_IDENTIFIED = "ItemsBelowParIdentified"
+
+# ── Sourcing ────────────────────────────────────────────────────────
+VENDOR_LOOKUP_COMPLETED = "VendorLookupCompleted"
+VENDOR_ITEM_OUT_OF_STOCK = "VendorItemOutOfStock"
+SUBSTITUTE_RECOMMENDED = "SubstituteRecommended"
+
+# ── Purchase orders ─────────────────────────────────────────────────
+PO_CREATED = "POCreated"
+PO_AUTO_APPROVED = "POAutoApproved"
+PO_PENDING_HUMAN_APPROVAL = "POPendingHumanApproval"
+PO_HUMAN_APPROVED = "POHumanApproved"
+PO_HUMAN_REJECTED = "POHumanRejected"
+PO_SUBMITTED = "POSubmitted"
+PO_CONFIRMED = "POConfirmed"
+
+# ── Fulfillment ─────────────────────────────────────────────────────
+SHIPMENT_CREATED = "ShipmentCreated"
+SHIPMENT_DELIVERED = "ShipmentDelivered"
+CLOSET_RESTOCKED = "ClosetRestocked"
+
+# ── Escalation / urgency ───────────────────────────────────────────
+CRITICAL_SHORTAGE_DETECTED = "CriticalShortageDetected"
 
 
 class StateDiff(BaseModel):

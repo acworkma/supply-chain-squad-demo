@@ -1,30 +1,28 @@
-import { Truck, AlertTriangle, ArrowRight } from "lucide-react";
+import { Truck, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { transportPriorityBadge } from "@/lib/colors";
-import type { Transport, Patient } from "@/types/api";
+import { shipmentStateBadge } from "@/lib/colors";
+import type { Shipment, ShipmentState } from "@/types/api";
 
-interface TransportQueueProps {
-  transports: Transport[];
-  patients: Record<string, Patient>;
+interface ShipmentTrackerProps {
+  shipments: Shipment[];
   loading: boolean;
   error: string | null;
 }
 
-const stateLabel: Record<string, string> = {
+const stateLabel: Record<ShipmentState, string> = {
   CREATED: "Pending",
-  ACCEPTED: "Accepted",
-  IN_PROGRESS: "In Transit",
-  COMPLETED: "Done",
-  ESCALATED: "Escalated",
-  CANCELLED: "Cancelled",
+  SHIPPED: "Shipped",
+  IN_TRANSIT: "In Transit",
+  DELIVERED: "Delivered",
+  DELAYED: "Delayed ⚠️",
 };
 
-function formatTime(ts: string | null): string {
+function formatDate(ts: string | undefined): string {
   if (!ts) return "—";
-  return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(ts).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export function TransportQueue({ transports, patients, loading, error }: TransportQueueProps) {
+export function ShipmentTracker({ shipments, loading, error }: ShipmentTrackerProps) {
   if (error) {
     return (
       <div className="flex items-center gap-2 px-4 py-3 text-tower-error text-xs">
@@ -34,26 +32,26 @@ export function TransportQueue({ transports, patients, loading, error }: Transpo
     );
   }
 
-  if (loading && transports.length === 0) {
+  if (loading && shipments.length === 0) {
     return (
       <div className="flex items-center justify-center gap-3 py-3 px-4 text-center">
         <div className="rounded-full bg-tower-accent/10 p-2 shrink-0">
           <Truck className="h-4 w-4 text-tower-accent/60" />
         </div>
-        <p className="text-sm text-gray-400">Loading transports…</p>
+        <p className="text-sm text-gray-400">Loading shipments…</p>
       </div>
     );
   }
 
-  if (transports.length === 0) {
+  if (shipments.length === 0) {
     return (
       <div className="flex items-center justify-center gap-3 py-3 px-4 text-center">
         <div className="rounded-full bg-tower-accent/10 p-2 shrink-0">
           <Truck className="h-4 w-4 text-tower-accent/60" />
         </div>
         <div>
-          <p className="text-sm text-gray-400">No active transports</p>
-          <p className="text-xs text-gray-600">Transport requests will queue here</p>
+          <p className="text-sm text-gray-400">No active shipments</p>
+          <p className="text-xs text-gray-600">Shipments will appear here once POs are submitted</p>
         </div>
       </div>
     );
@@ -61,47 +59,47 @@ export function TransportQueue({ transports, patients, loading, error }: Transpo
 
   return (
     <div className="divide-y divide-tower-border/50">
-      {transports.map((t) => {
-        const patient = patients[t.patient_id];
-        return (
-          <div
-            key={t.id}
-            className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.02] transition-colors text-xs"
-          >
-            {/* Priority badge */}
-            <span
-              className={cn(
-                "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase shrink-0",
-                transportPriorityBadge(t.priority)
-              )}
-            >
-              {t.priority}
+      {shipments.map((s) => (
+        <div
+          key={s.id}
+          className="flex items-start gap-3 px-3 py-2 hover:bg-white/[0.02] transition-colors text-xs"
+        >
+          {/* Carrier badge */}
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase shrink-0 bg-tower-accent/10 text-tower-accent">
+            {s.carrier}
+          </span>
+
+          {/* Main content */}
+          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+            <span className="text-gray-200 font-medium truncate">
+              PO {s.po_id} → {s.closet_id}
             </span>
-
-            {/* Route */}
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <span className="text-gray-200 font-medium truncate">
-                {patient?.name ?? t.patient_id}
+            {s.tracking_number && (
+              <span className="text-gray-500 font-mono text-[10px] truncate">
+                {s.tracking_number}
               </span>
-              <span className="text-gray-500 shrink-0 flex items-center gap-1">
-                <span className="truncate max-w-[60px]" title={t.from_location}>{t.from_location}</span>
-                <ArrowRight className="h-3 w-3" />
-                <span className="truncate max-w-[60px]" title={t.to_location}>{t.to_location}</span>
-              </span>
-            </div>
-
-            {/* State */}
-            <span className="text-gray-400 shrink-0">
-              {stateLabel[t.state] ?? t.state}
-            </span>
-
-            {/* Scheduled time */}
-            <span className="text-gray-500 font-mono shrink-0">
-              {formatTime(t.scheduled_time)}
+            )}
+            <span className="text-gray-500 text-[10px]">
+              {s.items_count} {s.items_count === 1 ? "item" : "items"}
             </span>
           </div>
-        );
-      })}
+
+          {/* Right side: state + date */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span
+              className={cn(
+                "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
+                shipmentStateBadge(s.state)
+              )}
+            >
+              {stateLabel[s.state] ?? s.state}
+            </span>
+            <span className="text-gray-500 font-mono text-[10px]">
+              {formatDate(s.expected_delivery)}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

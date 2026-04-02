@@ -1,31 +1,15 @@
-import { Users, AlertTriangle } from "lucide-react";
+import { ShoppingCart, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { patientStateBadge } from "@/lib/colors";
-import type { Patient } from "@/types/api";
+import { poStateBadge, poApprovalBadge } from "@/lib/colors";
+import type { PurchaseOrder } from "@/types/api";
 
-interface PatientQueueProps {
-  patients: Patient[];
+interface OrderQueueProps {
+  purchaseOrders: PurchaseOrder[];
   loading: boolean;
   error: string | null;
 }
 
-function formatWait(requestedAt: string): string {
-  const diff = Date.now() - new Date(requestedAt).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "<1m";
-  if (mins < 60) return `${mins}m`;
-  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
-}
-
-const acuityColors: Record<number, string> = {
-  1: "text-red-400",
-  2: "text-orange-400",
-  3: "text-yellow-400",
-  4: "text-blue-400",
-  5: "text-gray-400",
-};
-
-export function PatientQueue({ patients, loading, error }: PatientQueueProps) {
+export function OrderQueue({ purchaseOrders, loading, error }: OrderQueueProps) {
   if (error) {
     return (
       <div className="flex items-center gap-2 px-4 py-3 text-tower-error text-xs">
@@ -35,83 +19,80 @@ export function PatientQueue({ patients, loading, error }: PatientQueueProps) {
     );
   }
 
-  if (loading && patients.length === 0) {
+  if (loading && purchaseOrders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
         <div className="rounded-full bg-tower-accent/10 p-3 mb-3">
-          <Users className="h-5 w-5 text-tower-accent/60" />
+          <ShoppingCart className="h-5 w-5 text-tower-accent/60" />
         </div>
-        <p className="text-sm text-gray-400">Loading patients…</p>
+        <p className="text-sm text-gray-400">Loading purchase orders…</p>
       </div>
     );
   }
 
-  if (patients.length === 0) {
+  if (purchaseOrders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
         <div className="rounded-full bg-tower-accent/10 p-3 mb-3">
-          <Users className="h-5 w-5 text-tower-accent/60" />
+          <ShoppingCart className="h-5 w-5 text-tower-accent/60" />
         </div>
-        <p className="text-sm text-gray-400">No patients in queue</p>
-        <p className="text-xs text-gray-600 mt-1">Start a scenario to see incoming patients</p>
+        <p className="text-sm text-gray-400">No purchase orders</p>
+        <p className="text-xs text-gray-600 mt-1">Start a scenario to see purchase orders</p>
       </div>
     );
   }
 
-  // Sort: highest acuity first (lowest number), then longest wait
-  const sorted = [...patients].sort((a, b) => {
-    if (a.acuity_level !== b.acuity_level) return a.acuity_level - b.acuity_level;
-    return new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime();
-  });
+  const sorted = [...purchaseOrders].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
   return (
     <table className="w-full text-xs">
       <thead>
         <tr className="text-gray-500 uppercase tracking-wider border-b border-tower-border">
-          <th className="text-left px-3 py-2 font-medium">Patient</th>
-          <th className="text-left px-3 py-2 font-medium">MRN</th>
+          <th className="text-left px-3 py-2 font-medium">PO #</th>
+          <th className="text-left px-3 py-2 font-medium">Vendor</th>
           <th className="text-left px-3 py-2 font-medium">State</th>
-          <th className="text-left px-3 py-2 font-medium">Source</th>
-          <th className="text-left px-3 py-2 font-medium">Location</th>
-          <th className="text-center px-3 py-2 font-medium">Acuity</th>
-          <th className="text-left px-3 py-2 font-medium">Bed</th>
-          <th className="text-right px-3 py-2 font-medium">Wait</th>
+          <th className="text-left px-3 py-2 font-medium">Approval</th>
+          <th className="text-center px-3 py-2 font-medium">Items</th>
+          <th className="text-right px-3 py-2 font-medium">Total</th>
         </tr>
       </thead>
       <tbody>
-        {sorted.map((p) => (
+        {sorted.map((po) => (
           <tr
-            key={p.id}
+            key={po.id}
             className="border-b border-tower-border/50 hover:bg-white/[0.02] transition-colors"
           >
+            <td className="px-3 py-1.5 text-gray-400 font-mono">{po.id}</td>
             <td className="px-3 py-1.5 text-gray-200 font-medium truncate max-w-[120px]">
-              {p.name}
+              {po.vendor_name}
             </td>
-            <td className="px-3 py-1.5 text-gray-400 font-mono">{p.mrn}</td>
             <td className="px-3 py-1.5">
               <span
                 className={cn(
                   "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
-                  patientStateBadge(p.state)
+                  poStateBadge(po.state)
                 )}
               >
-                {p.state.replace(/_/g, " ")}
+                {po.state.replace(/_/g, " ")}
               </span>
             </td>
-            <td className="px-3 py-1.5 text-gray-400 truncate max-w-[80px]">
-              {p.admission_source?.replace(/_/g, " ") ?? "ER"}
+            <td className="px-3 py-1.5">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
+                  poApprovalBadge(po.approval_status)
+                )}
+              >
+                {po.approval_status.replace(/_/g, " ")}
+              </span>
             </td>
-            <td className="px-3 py-1.5 text-gray-400 truncate max-w-[100px]">
-              {p.current_location}
-            </td>
-            <td className={cn("px-3 py-1.5 text-center font-bold font-mono", acuityColors[p.acuity_level] ?? "text-gray-400")}>
-              {p.acuity_level}
-            </td>
-            <td className="px-3 py-1.5 text-gray-400 font-mono">
-              {p.assigned_bed_id ?? "—"}
+            <td className="px-3 py-1.5 text-center text-gray-400 font-mono">
+              {po.line_items.length}
             </td>
             <td className="px-3 py-1.5 text-right text-gray-400 font-mono">
-              {formatWait(p.requested_at)}
+              ${po.total_cost.toFixed(2)}
             </td>
           </tr>
         ))}

@@ -1,20 +1,56 @@
 // ── State enums as string unions ────────────────────────────────
 
-export type BedState =
-  | "OCCUPIED"
-  | "RESERVED"
-  | "DIRTY"
+export type ItemCategory =
+  | "IV_THERAPY"
+  | "SURGICAL"
+  | "PPE"
+  | "WOUND_CARE"
   | "CLEANING"
-  | "READY"
-  | "BLOCKED";
+  | "LINEN"
+  | "GENERAL"
+  | "SHARPS";
 
-export type PatientState =
-  | "AWAITING_BED"
-  | "BED_ASSIGNED"
-  | "TRANSPORT_READY"
+export type ItemCriticality = "CRITICAL" | "STANDARD" | "LOW";
+
+export type ContractTier = "GPO_CONTRACT" | "PREFERRED" | "SPOT_BUY";
+
+export type POState =
+  | "CREATED"
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "SUBMITTED"
+  | "CONFIRMED"
+  | "SHIPPED"
+  | "RECEIVED"
+  | "CANCELLED";
+
+export type POApprovalStatus =
+  | "AUTO_APPROVED"
+  | "PENDING_HUMAN"
+  | "HUMAN_APPROVED"
+  | "HUMAN_REJECTED";
+
+export type ScanState =
+  | "INITIATED"
+  | "ANALYZING"
+  | "ITEMS_IDENTIFIED"
+  | "SOURCING"
+  | "ORDERING"
+  | "PENDING_APPROVAL"
+  | "COMPLETE";
+
+export type VendorStockStatus =
+  | "IN_STOCK"
+  | "LOW_STOCK"
+  | "OUT_OF_STOCK"
+  | "DISCONTINUED";
+
+export type ShipmentState =
+  | "CREATED"
+  | "SHIPPED"
   | "IN_TRANSIT"
-  | "ARRIVED"
-  | "DISCHARGED";
+  | "DELIVERED"
+  | "DELAYED";
 
 export type TaskState =
   | "CREATED"
@@ -24,77 +60,116 @@ export type TaskState =
   | "ESCALATED"
   | "CANCELLED";
 
-export type TaskType = "EVS_CLEANING" | "TRANSPORT" | "BED_PREP" | "OTHER";
-
-export type TransportPriority = "STAT" | "URGENT" | "ROUTINE";
-
 export type IntentTag = "PROPOSE" | "VALIDATE" | "EXECUTE" | "ESCALATE";
-
-export type AdmissionSource = "ER" | "OR" | "DIRECT_ADMIT" | "TRANSFER";
 
 // ── Entity interfaces ──────────────────────────────────────────
 
-export interface Bed {
-  id: string;
-  unit: string;
-  room_number: string;
-  bed_letter: string;
-  state: BedState;
-  patient_id: string | null;
-  reserved_for_patient_id: string | null;
-  reserved_until: string | null;
-  last_state_change: string;
-}
-
-export interface Patient {
+export interface SupplyCloset {
   id: string;
   name: string;
-  mrn: string;
-  state: PatientState;
-  current_location: string;
-  assigned_bed_id: string | null;
-  diagnosis: string;
-  acuity_level: number;
-  admission_source: AdmissionSource;
-  requested_at: string;
-  eta_minutes: number | null;
+  floor: string;
+  unit: string;
+  location: string;
 }
 
-export interface Task {
+export interface SupplyItem {
   id: string;
-  type: TaskType;
-  subject_id: string;
-  state: TaskState;
-  priority: TransportPriority;
-  assigned_to: string | null;
+  sku: string;
+  name: string;
+  closet_id: string;
+  category: ItemCategory;
+  criticality: ItemCriticality;
+  par_level: number;
+  reorder_quantity: number;
+  current_quantity: number;
+  unit_of_measure: string;
+  consumption_rate_per_day: number;
+  last_restocked: string;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  contract_tier: ContractTier;
+  lead_time_days: number;
+  expedite_lead_time_days: number;
+  minimum_order_value: number;
+}
+
+export interface CatalogEntry {
+  id: string;
+  vendor_id: string;
+  item_sku: string;
+  unit_price: number;
+  contract_tier: ContractTier;
+  stock_status: VendorStockStatus;
+  lead_time_days: number;
+  substitute_sku?: string;
+}
+
+export interface POLineItem {
+  item_sku: string;
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  extended_price: number;
+  contract_tier: ContractTier;
+  criticality: ItemCriticality;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  scan_id: string;
+  vendor_id: string;
+  vendor_name: string;
+  state: POState;
+  approval_status: POApprovalStatus;
+  line_items: POLineItem[];
+  total_cost: number;
   created_at: string;
-  accepted_at: string | null;
-  completed_at: string | null;
-  due_by: string | null;
-  notes: string;
-  eta_minutes: number | null;
+  approved_at?: string;
+  submitted_at?: string;
+  requires_human_approval: boolean;
+  approval_note: string;
+  closet_id: string;
 }
 
-export interface Transport {
-  id: string;
-  patient_id: string;
-  from_location: string;
-  to_location: string;
-  priority: TransportPriority;
-  state: TaskState;
-  scheduled_time: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  assigned_to: string | null;
+export interface ReorderItem {
+  item_id: string;
+  item_sku: string;
+  item_name: string;
+  current_quantity: number;
+  par_level: number;
+  reorder_quantity: number;
+  criticality: ItemCriticality;
+  days_until_stockout: number;
+  recommended_vendor_id?: string;
+  recommended_unit_price?: number;
 }
 
-export interface Reservation {
+export interface ScanResult {
   id: string;
-  bed_id: string;
-  patient_id: string;
-  created_at: string;
-  hold_until: string;
-  is_active: boolean;
+  closet_id: string;
+  state: ScanState;
+  initiated_at: string;
+  completed_at?: string;
+  items_scanned: number;
+  items_below_par: number;
+  items_to_reorder: ReorderItem[];
+  purchase_order_ids: string[];
+}
+
+export interface Shipment {
+  id: string;
+  po_id: string;
+  vendor_id: string;
+  closet_id: string;
+  state: ShipmentState;
+  carrier: string;
+  tracking_number?: string;
+  expected_delivery?: string;
+  delivered_at?: string;
+  items_count: number;
 }
 
 export interface StateDiff {
@@ -122,34 +197,14 @@ export interface AgentMessage {
   related_event_ids: string[];
 }
 
-// ── Hospital configuration types ───────────────────────────────
-
-export interface CampusConfig {
-  id: string;
-  name: string;
-  has_dedicated_transporters: boolean;
-}
-
-export interface UnitConfig {
-  id: string;
-  name: string;
-  campus_id: string;
-  specialty: string;
-  allowed_diagnoses: string[];
-}
-
-export interface HospitalConfig {
-  campuses: Record<string, CampusConfig>;
-  units: Record<string, UnitConfig>;
-}
-
 // ── API response shapes ────────────────────────────────────────
 
 export interface StateResponse {
-  beds: Record<string, Bed>;
-  patients: Record<string, Patient>;
-  tasks: Record<string, Task>;
-  transports: Record<string, Transport>;
-  reservations: Record<string, Reservation>;
-  hospital_config: HospitalConfig;
+  closets: Record<string, SupplyCloset>;
+  supply_items: Record<string, SupplyItem>;
+  vendors: Record<string, Vendor>;
+  catalog: Record<string, CatalogEntry>;
+  purchase_orders: Record<string, PurchaseOrder>;
+  scans: Record<string, ScanResult>;
+  shipments: Record<string, Shipment>;
 }

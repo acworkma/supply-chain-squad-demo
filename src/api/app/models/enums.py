@@ -1,24 +1,72 @@
-"""State enums for the bed-management domain model."""
+"""State enums for the supply-closet replenishment domain."""
 
 from enum import StrEnum
 
 
-class BedState(StrEnum):
-    OCCUPIED = "OCCUPIED"
-    RESERVED = "RESERVED"
-    DIRTY = "DIRTY"
+class ItemCategory(StrEnum):
+    IV_THERAPY = "IV_THERAPY"
+    SURGICAL = "SURGICAL"
+    PPE = "PPE"
+    WOUND_CARE = "WOUND_CARE"
     CLEANING = "CLEANING"
-    READY = "READY"
-    BLOCKED = "BLOCKED"
+    LINEN = "LINEN"
+    GENERAL = "GENERAL"
+    SHARPS = "SHARPS"
 
 
-class PatientState(StrEnum):
-    AWAITING_BED = "AWAITING_BED"
-    BED_ASSIGNED = "BED_ASSIGNED"
-    TRANSPORT_READY = "TRANSPORT_READY"
+class ItemCriticality(StrEnum):
+    CRITICAL = "CRITICAL"
+    STANDARD = "STANDARD"
+    LOW = "LOW"
+
+
+class ContractTier(StrEnum):
+    GPO_CONTRACT = "GPO_CONTRACT"
+    PREFERRED = "PREFERRED"
+    SPOT_BUY = "SPOT_BUY"
+
+
+class POState(StrEnum):
+    CREATED = "CREATED"
+    PENDING_APPROVAL = "PENDING_APPROVAL"
+    APPROVED = "APPROVED"
+    SUBMITTED = "SUBMITTED"
+    CONFIRMED = "CONFIRMED"
+    SHIPPED = "SHIPPED"
+    RECEIVED = "RECEIVED"
+    CANCELLED = "CANCELLED"
+
+
+class POApprovalStatus(StrEnum):
+    AUTO_APPROVED = "AUTO_APPROVED"
+    PENDING_HUMAN = "PENDING_HUMAN"
+    HUMAN_APPROVED = "HUMAN_APPROVED"
+    HUMAN_REJECTED = "HUMAN_REJECTED"
+
+
+class ScanState(StrEnum):
+    INITIATED = "INITIATED"
+    ANALYZING = "ANALYZING"
+    ITEMS_IDENTIFIED = "ITEMS_IDENTIFIED"
+    SOURCING = "SOURCING"
+    ORDERING = "ORDERING"
+    PENDING_APPROVAL = "PENDING_APPROVAL"
+    COMPLETE = "COMPLETE"
+
+
+class VendorStockStatus(StrEnum):
+    IN_STOCK = "IN_STOCK"
+    LOW_STOCK = "LOW_STOCK"
+    OUT_OF_STOCK = "OUT_OF_STOCK"
+    DISCONTINUED = "DISCONTINUED"
+
+
+class ShipmentState(StrEnum):
+    CREATED = "CREATED"
+    SHIPPED = "SHIPPED"
     IN_TRANSIT = "IN_TRANSIT"
-    ARRIVED = "ARRIVED"
-    DISCHARGED = "DISCHARGED"
+    DELIVERED = "DELIVERED"
+    DELAYED = "DELAYED"
 
 
 class TaskState(StrEnum):
@@ -28,26 +76,6 @@ class TaskState(StrEnum):
     COMPLETED = "COMPLETED"
     ESCALATED = "ESCALATED"
     CANCELLED = "CANCELLED"
-
-
-class TaskType(StrEnum):
-    EVS_CLEANING = "EVS_CLEANING"
-    TRANSPORT = "TRANSPORT"
-    BED_PREP = "BED_PREP"
-    OTHER = "OTHER"
-
-
-class TransportPriority(StrEnum):
-    STAT = "STAT"
-    URGENT = "URGENT"
-    ROUTINE = "ROUTINE"
-
-
-class AdmissionSource(StrEnum):
-    ER = "ER"
-    OR = "OR"
-    DIRECT_ADMIT = "DIRECT_ADMIT"
-    TRANSFER = "TRANSFER"
 
 
 class IntentTag(StrEnum):

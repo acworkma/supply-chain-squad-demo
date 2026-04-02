@@ -6,12 +6,12 @@ import type { AgentMessage } from "@/types/api";
 /* ── Agent definitions ─────────────────────────────────────────── */
 
 const AGENT_DIRECTORY = [
-  { name: "bed-coordinator", role: "Bed Coordinator Assistant", desc: "The central hub. Aggregates signals from all agents, surfaces placement recommendations, and drives the end-to-end bed placement workflow." },
-  { name: "predictive-capacity", role: "Predictive Capacity", desc: "Ranks available beds by predicted availability, patient acuity, and unit fit. Thinks ahead — which beds are about to open? Which units are nearing capacity?" },
-  { name: "bed-allocation", role: "Bed Allocation", desc: "Handles the actual bed reservation. Once a bed is chosen, locks it down so no other patient can claim it." },
-  { name: "evs-tasking", role: "EVS Tasking", desc: "The housekeeping dispatcher. Creates and tracks cleaning work orders when a bed needs room prep before a patient can move in." },
-  { name: "transport-ops", role: "Transport Ops", desc: "Schedules the patient's physical move from current location to assigned bed. Manages priority and dispatch." },
-  { name: "policy-safety", role: "Policy & Safety", desc: "The compliance check. Validates assignments against isolation requirements, acuity rules, and safety constraints. Can block or escalate." },
+  { name: "supply-coordinator", role: "Supply Chain Coordinator", desc: "The central hub. Orchestrates the entire fulfillment workflow — from order intake through allocation, warehouse operations, and shipment." },
+  { name: "demand-forecaster", role: "Demand Forecaster", desc: "Analyzes inventory levels and order pipeline to generate capacity assessments. Flags low-stock and out-of-stock situations before they block fulfillment." },
+  { name: "inventory-allocator", role: "Inventory Allocator", desc: "Assigns available inventory to orders. Creates allocation holds, handles split-warehouse scenarios, and releases allocations on cancellation." },
+  { name: "warehouse-ops", role: "Warehouse Operations", desc: "The fulfillment floor manager. Creates and tracks pick, pack, restock, and quality check tasks across warehouse zones." },
+  { name: "logistics-planner", role: "Logistics Planner", desc: "Plans shipments from warehouse to customer. Selects carriers based on priority, generates tracking numbers, and handles rerouting on delays." },
+  { name: "compliance-monitor", role: "Compliance Monitor", desc: "The SLA watchdog. Monitors fulfillment timelines, validates policy requirements, and escalates when thresholds are breached." },
 ];
 
 /* ── Props ──────────────────────────────────────────────────────── */

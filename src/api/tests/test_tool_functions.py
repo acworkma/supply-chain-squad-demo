@@ -9,475 +9,695 @@ import pytest
 
 from app.events.event_store import EventStore
 from app.messages.message_store import MessageStore
-from app.models.entities import Bed, Patient
+from app.models.entities import (
+    CatalogEntry,
+    PurchaseOrder,
+    ReorderItem,
+    ScanResult,
+    Shipment,
+    SupplyCloset,
+    SupplyItem,
+    Vendor,
+)
 from app.models.enums import (
-    BedState,
+    ContractTier,
     IntentTag,
-    PatientState,
-    TaskState,
-    TaskType,
-    TransportPriority,
+    ItemCategory,
+    ItemCriticality,
+    POApprovalStatus,
+    POState,
+    ScanState,
+    ShipmentState,
+    VendorStockStatus,
 )
 from app.models.events import (
-    BED_RESERVED,
-    EVS_TASK_CREATED,
-    EVS_TASK_STATUS_CHANGED,
-    RESERVATION_RELEASED,
-    SLA_RISK_DETECTED,
-    TRANSPORT_SCHEDULED,
+    CLOSET_SCAN_INITIATED,
+    CRITICAL_SHORTAGE_DETECTED,
+    ITEMS_BELOW_PAR_IDENTIFIED,
+    PO_AUTO_APPROVED,
+    PO_CREATED,
+    PO_HUMAN_APPROVED,
+    PO_HUMAN_REJECTED,
+    PO_PENDING_HUMAN_APPROVAL,
+    PO_SUBMITTED,
+    SHIPMENT_CREATED,
+    SHIPMENT_DELIVERED,
+    VENDOR_LOOKUP_COMPLETED,
 )
-from app.models.transitions import InvalidTransitionError
 from app.state.store import StateStore
 from app.tools.tool_functions import (
-    create_task,
+    analyze_scan,
+    approve_purchase_order,
+    create_purchase_order,
+    create_shipment,
     escalate,
-    get_beds,
-    get_patient,
-    get_tasks,
+    get_items,
+    get_purchase_orders,
+    get_scan,
+    get_shipments,
+    get_vendors,
+    initiate_scan,
+    lookup_vendor_catalog,
     publish_event,
-    release_bed_reservation,
-    reserve_bed,
-    schedule_transport,
-    update_task,
+    receive_shipment,
+    submit_purchase_order,
 )
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
-def _seed_bed(store: StateStore, bed_id: str = "BED-101A", state: BedState = BedState.READY, unit: str = "4-North") -> Bed:
-    bed = Bed(id=bed_id, unit=unit, room_number="101", bed_letter="A", state=state)
-    store.beds[bed_id] = bed
-    return bed
+
+def _seed_closet(store: StateStore, closet_id: str = "CLO-ICU-01") -> SupplyCloset:
+    closet = SupplyCloset(id=closet_id, name="ICU Supply Closet", floor="floor-2", unit="ICU", location="2nd Floor East Wing")
+    store.closets[closet_id] = closet
+    return closet
 
 
-def _seed_patient(store: StateStore, patient_id: str = "P-001", state: PatientState = PatientState.AWAITING_BED) -> Patient:
-    patient = Patient(id=patient_id, name="Test Patient", mrn="MRN-001", current_location="ED Bay 1", state=state)
-    store.patients[patient_id] = patient
-    return patient
+def _seed_item(
+    store: StateStore,
+    item_id: str = "ITEM-001",
+    closet_id: str = "CLO-ICU-01",
+    sku: str = "SKU-NS-1000",
+    current_qty: int = 5,
+    par_level: int = 20,
+) -> SupplyItem:
+    item = SupplyItem(
+        id=item_id, sku=sku, name="Normal Saline 1000mL", closet_id=closet_id,
+        category=ItemCategory.IV_THERAPY, criticality=ItemCriticality.CRITICAL,
+        par_level=par_level, reorder_quantity=30, current_quantity=current_qty,
+        unit_of_measure="bag", consumption_rate_per_day=4.0,
+    )
+    store.items[item_id] = item
+    return item
+
+
+def _seed_vendor(store: StateStore, vendor_id: str = "VND-MED-01") -> Vendor:
+    vendor = Vendor(
+        id=vendor_id, name="MedLine Industries", contract_tier=ContractTier.GPO_CONTRACT,
+        lead_time_days=3, expedite_lead_time_days=1, minimum_order_value=100.0,
+    )
+    store.vendors[vendor_id] = vendor
+    return vendor
+
+
+def _seed_catalog_entry(
+    store: StateStore,
+    entry_id: str = "CAT-001",
+    vendor_id: str = "VND-MED-01",
+    item_sku: str = "SKU-NS-1000",
+    unit_price: float = 8.50,
+) -> CatalogEntry:
+    entry = CatalogEntry(
+        id=entry_id, vendor_id=vendor_id, item_sku=item_sku,
+        unit_price=unit_price, contract_tier=ContractTier.GPO_CONTRACT,
+        stock_status=VendorStockStatus.IN_STOCK, lead_time_days=3,
+    )
+    store.catalog[entry_id] = entry
+    return entry
+
+
+def _seed_scan_with_reorder(store: StateStore, scan_id: str = "SCAN-001", closet_id: str = "CLO-ICU-01") -> ScanResult:
+    """Create a scan in ITEMS_IDENTIFIED state with reorder items."""
+    scan = ScanResult(
+        id=scan_id, closet_id=closet_id, state=ScanState.ITEMS_IDENTIFIED,
+        items_scanned=5, items_below_par=1,
+        items_to_reorder=[
+            ReorderItem(
+                item_id="ITEM-001", item_sku="SKU-NS-1000", item_name="Normal Saline 1000mL",
+                current_quantity=5, par_level=20, reorder_quantity=30,
+                criticality=ItemCriticality.CRITICAL, days_until_stockout=1.25,
+                recommended_vendor_id="VND-MED-01", recommended_unit_price=8.50,
+            ),
+        ],
+    )
+    store.scans[scan_id] = scan
+    return scan
 
 
 # ===================================================================
-# get_patient
+# get_scan
 # ===================================================================
 
-class TestGetPatient:
+class TestGetScan:
 
-    async def test_returns_patient_data(self, state_store: StateStore):
-        _seed_patient(state_store, "P-001")
-        result = await get_patient("P-001", state_store=state_store)
+    async def test_returns_scan_data(self, state_store: StateStore):
+        scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
+        state_store.scans["SCAN-001"] = scan
+        result = await get_scan("SCAN-001", state_store=state_store)
         assert result["ok"] is True
-        assert result["patient"]["id"] == "P-001"
-        assert result["patient"]["name"] == "Test Patient"
+        assert result["scan"]["id"] == "SCAN-001"
+        assert result["scan"]["closet_id"] == "CLO-ICU-01"
 
     async def test_not_found(self, state_store: StateStore):
-        result = await get_patient("P-MISSING", state_store=state_store)
+        result = await get_scan("SCAN-MISSING", state_store=state_store)
         assert result["ok"] is False
         assert "not found" in result["error"]
 
-    async def test_returns_all_patient_fields(self, state_store: StateStore):
-        _seed_patient(state_store, "P-002")
-        result = await get_patient("P-002", state_store=state_store)
-        patient = result["patient"]
-        assert "id" in patient
-        assert "name" in patient
-        assert "mrn" in patient
-        assert "state" in patient
-        assert "current_location" in patient
-
 
 # ===================================================================
-# get_beds
+# get_items
 # ===================================================================
 
-class TestGetBeds:
+class TestGetItems:
 
-    async def test_returns_all_beds(self, state_store: StateStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_bed(state_store, "BED-2", BedState.DIRTY)
-        result = await get_beds(state_store=state_store)
+    async def test_returns_all_items(self, state_store: StateStore):
+        _seed_closet(state_store, "CLO-1")
+        _seed_item(state_store, "ITEM-1", closet_id="CLO-1")
+        _seed_item(state_store, "ITEM-2", closet_id="CLO-1", sku="SKU-GLOVE")
+        result = await get_items(state_store=state_store)
         assert result["ok"] is True
-        assert len(result["beds"]) == 2
+        assert len(result["items"]) == 2
 
-    async def test_filter_by_unit(self, state_store: StateStore):
-        _seed_bed(state_store, "BED-1", unit="4-North")
-        _seed_bed(state_store, "BED-2", unit="5-South")
-        result = await get_beds(state_store=state_store, unit="4-North")
-        assert len(result["beds"]) == 1
-        assert result["beds"][0]["unit"] == "4-North"
+    async def test_filter_by_closet(self, state_store: StateStore):
+        _seed_closet(state_store, "CLO-1")
+        _seed_closet(state_store, "CLO-2")
+        _seed_item(state_store, "ITEM-1", closet_id="CLO-1")
+        _seed_item(state_store, "ITEM-2", closet_id="CLO-2", sku="SKU-GLOVE")
+        result = await get_items(state_store=state_store, closet_id="CLO-1")
+        assert len(result["items"]) == 1
+        assert result["items"][0]["closet_id"] == "CLO-1"
+
+    async def test_filter_by_category(self, state_store: StateStore):
+        _seed_closet(state_store)
+        _seed_item(state_store, "ITEM-1")
+        result = await get_items(state_store=state_store, category="IV_THERAPY")
+        assert len(result["items"]) == 1
+
+    async def test_filter_by_criticality(self, state_store: StateStore):
+        _seed_closet(state_store)
+        _seed_item(state_store, "ITEM-1")
+        result = await get_items(state_store=state_store, criticality="CRITICAL")
+        assert len(result["items"]) == 1
+
+    async def test_empty_store(self, state_store: StateStore):
+        result = await get_items(state_store=state_store)
+        assert result["ok"] is True
+        assert result["items"] == []
+
+
+# ===================================================================
+# get_vendors
+# ===================================================================
+
+class TestGetVendors:
+
+    async def test_returns_all_vendors(self, state_store: StateStore):
+        _seed_vendor(state_store, "VND-1")
+        _seed_vendor(state_store, "VND-2")
+        result = await get_vendors(state_store=state_store)
+        assert result["ok"] is True
+        assert len(result["vendors"]) == 2
+
+    async def test_filter_by_contract_tier(self, state_store: StateStore):
+        _seed_vendor(state_store, "VND-1")
+        result = await get_vendors(state_store=state_store, contract_tier="GPO_CONTRACT")
+        assert len(result["vendors"]) == 1
+
+
+# ===================================================================
+# get_purchase_orders
+# ===================================================================
+
+class TestGetPurchaseOrders:
+
+    async def test_returns_all_pos(self, state_store: StateStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test")
+        state_store.purchase_orders["PO-1"] = po
+        result = await get_purchase_orders(state_store=state_store)
+        assert result["ok"] is True
+        assert len(result["purchase_orders"]) == 1
 
     async def test_filter_by_state(self, state_store: StateStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_bed(state_store, "BED-2", BedState.DIRTY)
-        result = await get_beds(state_store=state_store, state="READY")
-        assert len(result["beds"]) == 1
-        assert result["beds"][0]["state"] == "READY"
-
-    async def test_filter_by_unit_and_state(self, state_store: StateStore):
-        _seed_bed(state_store, "BED-1", BedState.READY, unit="4-North")
-        _seed_bed(state_store, "BED-2", BedState.DIRTY, unit="4-North")
-        _seed_bed(state_store, "BED-3", BedState.READY, unit="5-South")
-        result = await get_beds(state_store=state_store, unit="4-North", state="READY")
-        assert len(result["beds"]) == 1
-        assert result["beds"][0]["id"] == "BED-1"
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        state_store.purchase_orders["PO-1"] = po
+        result = await get_purchase_orders(state_store=state_store, po_state="APPROVED")
+        assert len(result["purchase_orders"]) == 1
 
     async def test_empty_store(self, state_store: StateStore):
-        result = await get_beds(state_store=state_store)
+        result = await get_purchase_orders(state_store=state_store)
         assert result["ok"] is True
-        assert result["beds"] == []
+        assert result["purchase_orders"] == []
 
-    async def test_filter_by_diagnosis(self, state_store: StateStore):
-        """Diagnosis filter narrows beds to clinically appropriate units."""
-        _seed_bed(state_store, "BED-1", BedState.READY, unit="4-North")
-        _seed_bed(state_store, "BED-2", BedState.READY, unit="5-South")
-        result = await get_beds(state_store=state_store, diagnosis="chest pain")
-        assert result["ok"] is True
-        # chest pain → Cardiac/Telemetry → 5-South only
-        assert len(result["beds"]) == 1
-        assert result["beds"][0]["unit"] == "5-South"
-
-    async def test_filter_by_diagnosis_medsurg(self, state_store: StateStore):
-        """Pneumonia maps to Med/Surg units (4-North and 2-East)."""
-        _seed_bed(state_store, "BED-1", BedState.READY, unit="4-North")
-        _seed_bed(state_store, "BED-2", BedState.READY, unit="5-South")
-        _seed_bed(state_store, "BED-3", BedState.READY, unit="2-East")
-        result = await get_beds(state_store=state_store, diagnosis="pneumonia")
-        assert result["ok"] is True
-        units = {b["unit"] for b in result["beds"]}
-        assert "4-North" in units
-        assert "2-East" in units
-        assert "5-South" not in units
 
 # ===================================================================
-# get_tasks
+# get_shipments
 # ===================================================================
 
-class TestGetTasks:
+class TestGetShipments:
 
-    async def test_returns_all_tasks(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await create_task("TRANSPORT", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        result = await get_tasks(state_store=state_store)
+    async def test_returns_all_shipments(self, state_store: StateStore):
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="V-1", closet_id="CLO-1")
+        state_store.shipments["SHP-1"] = shp
+        result = await get_shipments(state_store=state_store)
         assert result["ok"] is True
-        assert len(result["tasks"]) == 2
+        assert len(result["shipments"]) == 1
 
-    async def test_filter_by_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        r = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        result = await get_tasks(state_store=state_store, task_state="CREATED")
-        assert len(result["tasks"]) == 1
-
-    async def test_filter_by_type(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await create_task("TRANSPORT", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        result = await get_tasks(state_store=state_store, task_type="TRANSPORT")
-        assert len(result["tasks"]) == 1
-        assert result["tasks"][0]["type"] == "TRANSPORT"
+    async def test_filter_by_state(self, state_store: StateStore):
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="V-1", closet_id="CLO-1", state=ShipmentState.SHIPPED)
+        state_store.shipments["SHP-1"] = shp
+        result = await get_shipments(state_store=state_store, shipment_state="SHIPPED")
+        assert len(result["shipments"]) == 1
 
     async def test_empty_store(self, state_store: StateStore):
-        result = await get_tasks(state_store=state_store)
+        result = await get_shipments(state_store=state_store)
         assert result["ok"] is True
-        assert result["tasks"] == []
+        assert result["shipments"] == []
 
 
 # ===================================================================
-# reserve_bed
+# initiate_scan
 # ===================================================================
 
-class TestReserveBed:
+class TestInitiateScan:
 
-    async def test_reserves_ready_bed(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        result = await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
+    async def test_creates_scan(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store, "CLO-ICU-01")
+        result = await initiate_scan("CLO-ICU-01", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is True
-        assert result["bed_id"] == "BED-1"
-        assert result["patient_id"] == "P-1"
-        assert "reservation_id" in result
-        assert "hold_until" in result
+        assert result["closet_id"] == "CLO-ICU-01"
+        assert "scan_id" in result
 
-    async def test_bed_transitions_to_reserved(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert state_store.get_bed("BED-1").state == BedState.RESERVED
+    async def test_scan_stored_in_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store, "CLO-ICU-01")
+        result = await initiate_scan("CLO-ICU-01", state_store=state_store, event_store=event_store, message_store=message_store)
+        scan = state_store.get_scan(result["scan_id"])
+        assert scan is not None
+        assert scan.state == ScanState.INITIATED
+        assert scan.closet_id == "CLO-ICU-01"
 
-    async def test_creates_reservation_entity(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        result = await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        reservations = state_store.get_active_reservations()
-        assert len(reservations) == 1
-        assert reservations[0].bed_id == "BED-1"
-        assert reservations[0].patient_id == "P-1"
-        assert reservations[0].is_active is True
-
-    async def test_emits_bed_reserved_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
+    async def test_emits_scan_initiated_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store, "CLO-ICU-01")
+        await initiate_scan("CLO-ICU-01", state_store=state_store, event_store=event_store, message_store=message_store)
         events = event_store.get_events()
         assert len(events) == 1
-        assert events[0].event_type == BED_RESERVED
-        assert events[0].entity_id == "BED-1"
-        assert events[0].state_diff.from_state == "READY"
-        assert events[0].state_diff.to_state == "RESERVED"
+        assert events[0].event_type == CLOSET_SCAN_INITIATED
 
     async def test_publishes_message(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        _seed_closet(state_store, "CLO-ICU-01")
+        await initiate_scan("CLO-ICU-01", state_store=state_store, event_store=event_store, message_store=message_store)
         messages = message_store.get_messages()
         assert len(messages) == 1
+        assert messages[0].agent_name == "supply-scanner"
         assert messages[0].intent_tag == IntentTag.EXECUTE
-        assert "BED-1" in messages[0].content
 
-    async def test_bed_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_patient(state_store, "P-1")
-        result = await reserve_bed("BED-FAKE", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
+    async def test_closet_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await initiate_scan("CLO-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
         assert "not found" in result["error"]
 
-    async def test_patient_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        result = await reserve_bed("BED-1", "P-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
+
+# ===================================================================
+# analyze_scan
+# ===================================================================
+
+class TestAnalyzeScan:
+
+    async def test_identifies_items_below_par(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_item(state_store, "ITEM-1", current_qty=5, par_level=20)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
+        state_store.scans["SCAN-001"] = scan
+
+        result = await analyze_scan("SCAN-001", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert result["items_below_par"] == 1
+        assert result["items_scanned"] == 1
+        assert len(result["reorder_items"]) == 1
+
+    async def test_transitions_scan_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_item(state_store)
+        _seed_catalog_entry(state_store)
+        scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
+        state_store.scans["SCAN-001"] = scan
+
+        await analyze_scan("SCAN-001", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert state_store.get_scan("SCAN-001").state == ScanState.ITEMS_IDENTIFIED
+
+    async def test_computes_days_until_stockout(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_item(state_store, current_qty=8, par_level=20)  # 8 bags / 4 per day = 2.0 days
+        _seed_catalog_entry(state_store)
+        scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
+        state_store.scans["SCAN-001"] = scan
+
+        result = await analyze_scan("SCAN-001", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["reorder_items"][0]["days_until_stockout"] == 2.0
+
+    async def test_emits_items_below_par_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_item(state_store)
+        _seed_catalog_entry(state_store)
+        scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
+        state_store.scans["SCAN-001"] = scan
+
+        await analyze_scan("SCAN-001", state_store=state_store, event_store=event_store, message_store=message_store)
+        events = event_store.get_events()
+        event_types = [e.event_type for e in events]
+        assert ITEMS_BELOW_PAR_IDENTIFIED in event_types
+
+    async def test_no_items_below_par(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_item(state_store, current_qty=25, par_level=20)  # Above par
+        scan = ScanResult(id="SCAN-001", closet_id="CLO-ICU-01")
+        state_store.scans["SCAN-001"] = scan
+
+        result = await analyze_scan("SCAN-001", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert result["items_below_par"] == 0
+
+    async def test_scan_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await analyze_scan("SCAN-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
         assert "not found" in result["error"]
 
-    async def test_invalid_transition_returns_error(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.OCCUPIED)
-        _seed_patient(state_store, "P-1")
-        result = await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
+
+# ===================================================================
+# lookup_vendor_catalog
+# ===================================================================
+
+class TestLookupVendorCatalog:
+
+    async def test_finds_catalog_entries(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        result = await lookup_vendor_catalog("SKU-NS-1000", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert len(result["entries"]) == 1
+        assert result["recommended_vendor_id"] == "VND-MED-01"
+
+    async def test_sku_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await lookup_vendor_catalog("SKU-NONEXISTENT", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
+        assert "No catalog entries" in result["error"]
 
-    async def test_custom_hold_minutes(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        result = await reserve_bed("BED-1", "P-1", hold_minutes=60, state_store=state_store, event_store=event_store, message_store=message_store)
-        assert result["ok"] is True
+    async def test_emits_vendor_lookup_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        await lookup_vendor_catalog("SKU-NS-1000", state_store=state_store, event_store=event_store, message_store=message_store)
         events = event_store.get_events()
-        assert events[0].payload["hold_minutes"] == 60
-
-
-# ===================================================================
-# release_bed_reservation
-# ===================================================================
-
-class TestReleaseBedReservation:
-
-    async def test_releases_reservation(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-
-        result = await release_bed_reservation("BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert result["ok"] is True
-        assert result["bed_id"] == "BED-1"
-
-    async def test_bed_transitions_back_to_ready(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await release_bed_reservation("BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert state_store.get_bed("BED-1").state == BedState.READY
-
-    async def test_deactivates_reservation(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await release_bed_reservation("BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        active = state_store.get_active_reservations()
-        assert len(active) == 0
-
-    async def test_emits_reservation_released_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_bed(state_store, "BED-1", BedState.READY)
-        _seed_patient(state_store, "P-1")
-        await reserve_bed("BED-1", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        event_store.clear()  # clear the reserve event to isolate release
-        await release_bed_reservation("BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        events = event_store.get_events()
-        assert any(e.event_type == RESERVATION_RELEASED for e in events)
-
-    async def test_bed_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await release_bed_reservation("BED-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert result["ok"] is False
-
-
-# ===================================================================
-# create_task
-# ===================================================================
-
-class TestCreateTask:
-
-    async def test_creates_evs_task(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert result["ok"] is True
-        assert result["type"] == "EVS_CLEANING"
-        assert result["subject_id"] == "BED-1"
-        assert "task_id" in result
-
-    async def test_task_stored_in_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(result["task_id"])
-        assert task is not None
-        assert task.type == TaskType.EVS_CLEANING
-        assert task.state == TaskState.CREATED
-        assert task.subject_id == "BED-1"
-
-    async def test_emits_evs_task_created_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        events = event_store.get_events()
-        assert len(events) == 1
-        assert events[0].event_type == EVS_TASK_CREATED
+        assert events[0].event_type == VENDOR_LOOKUP_COMPLETED
 
     async def test_publishes_message(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        await lookup_vendor_catalog("SKU-NS-1000", state_store=state_store, event_store=event_store, message_store=message_store)
         messages = message_store.get_messages()
-        assert len(messages) == 1
-        assert messages[0].intent_tag == IntentTag.EXECUTE
+        assert messages[0].agent_name == "catalog-sourcer"
+        assert messages[0].intent_tag == IntentTag.PROPOSE
 
-    async def test_priority_defaults_to_routine(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(result["task_id"])
-        assert task.priority == TransportPriority.ROUTINE
+    async def test_recommends_cheapest_in_stock_gpo(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store, "VND-1")
+        _seed_catalog_entry(store=state_store, entry_id="CAT-1", vendor_id="VND-1", unit_price=10.0)
+        vendor2 = Vendor(id="VND-2", name="SpotVendor", contract_tier=ContractTier.SPOT_BUY, lead_time_days=5, expedite_lead_time_days=2, minimum_order_value=50.0)
+        state_store.vendors["VND-2"] = vendor2
+        entry2 = CatalogEntry(id="CAT-2", vendor_id="VND-2", item_sku="SKU-NS-1000", unit_price=7.0, contract_tier=ContractTier.SPOT_BUY, stock_status=VendorStockStatus.IN_STOCK, lead_time_days=5)
+        state_store.catalog["CAT-2"] = entry2
 
-    async def test_explicit_priority(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await create_task("EVS_CLEANING", "BED-1", priority="STAT", state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(result["task_id"])
-        assert task.priority == TransportPriority.STAT
-
-    async def test_transport_task_type(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await create_task("TRANSPORT", "P-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(result["task_id"])
-        assert task.type == TaskType.TRANSPORT
+        result = await lookup_vendor_catalog("SKU-NS-1000", state_store=state_store, event_store=event_store, message_store=message_store)
+        # GPO contract (VND-1) should be recommended over cheaper spot buy (VND-2)
+        assert result["recommended_vendor_id"] == "VND-1"
 
 
 # ===================================================================
-# update_task
+# create_purchase_order
 # ===================================================================
 
-class TestUpdateTask:
+class TestCreatePurchaseOrder:
 
-    async def test_transitions_task_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        result = await update_task(cr["task_id"], "ACCEPTED", state_store=state_store, event_store=event_store, message_store=message_store)
+    async def test_creates_po_auto_approved(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        _seed_scan_with_reorder(state_store)  # 30 × $8.50 = $255 < $1000
+
+        result = await create_purchase_order("SCAN-001", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is True
-        assert result["old_state"] == "CREATED"
-        assert result["new_state"] == "ACCEPTED"
+        assert result["requires_human_approval"] is False
+        assert result["total_cost"] == 255.0
+        assert result["line_items"] == 1
+        assert result["state"] == "APPROVED"
 
-    async def test_task_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await update_task("TASK-FAKE", "ACCEPTED", state_store=state_store, event_store=event_store, message_store=message_store)
+    async def test_po_stored_in_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        _seed_scan_with_reorder(state_store)
+
+        result = await create_purchase_order("SCAN-001", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
+        po = state_store.get_purchase_order(result["po_id"])
+        assert po is not None
+        assert po.state == POState.APPROVED
+        assert po.vendor_name == "MedLine Industries"
+
+    async def test_emits_po_auto_approved_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+        _seed_scan_with_reorder(state_store)
+
+        await create_purchase_order("SCAN-001", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
+        event_types = [e.event_type for e in event_store.get_events()]
+        assert PO_AUTO_APPROVED in event_types
+        assert PO_CREATED in event_types
+
+    async def test_requires_human_approval_over_threshold(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store, unit_price=50.0)  # 30 × $50 = $1500 >= $1000
+        scan = ScanResult(
+            id="SCAN-BIG", closet_id="CLO-ICU-01", state=ScanState.ITEMS_IDENTIFIED,
+            items_below_par=1,
+            items_to_reorder=[
+                ReorderItem(
+                    item_id="ITEM-001", item_sku="SKU-NS-1000", item_name="Normal Saline",
+                    current_quantity=5, par_level=20, reorder_quantity=30,
+                    criticality=ItemCriticality.CRITICAL, days_until_stockout=1.25,
+                    recommended_unit_price=50.0,
+                ),
+            ],
+        )
+        state_store.scans["SCAN-BIG"] = scan
+
+        result = await create_purchase_order("SCAN-BIG", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert result["requires_human_approval"] is True
+        assert result["state"] == "PENDING_APPROVAL"
+
+    async def test_emits_pending_human_approval_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store, unit_price=50.0)
+        scan = ScanResult(
+            id="SCAN-BIG", closet_id="CLO-ICU-01", state=ScanState.ITEMS_IDENTIFIED,
+            items_below_par=1,
+            items_to_reorder=[
+                ReorderItem(
+                    item_id="ITEM-001", item_sku="SKU-NS-1000", item_name="Normal Saline",
+                    current_quantity=5, par_level=20, reorder_quantity=30,
+                    criticality=ItemCriticality.CRITICAL, days_until_stockout=1.25,
+                    recommended_unit_price=50.0,
+                ),
+            ],
+        )
+        state_store.scans["SCAN-BIG"] = scan
+
+        await create_purchase_order("SCAN-BIG", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
+        event_types = [e.event_type for e in event_store.get_events()]
+        assert PO_PENDING_HUMAN_APPROVAL in event_types
+
+    async def test_scan_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await create_purchase_order("SCAN-FAKE", "VND-1", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
         assert "not found" in result["error"]
 
-    async def test_invalid_transition_returns_error(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        result = await update_task(cr["task_id"], "COMPLETED", state_store=state_store, event_store=event_store, message_store=message_store)
-        assert result["ok"] is False
-
-    async def test_emits_status_changed_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        event_store.clear()
-        await update_task(cr["task_id"], "ACCEPTED", state_store=state_store, event_store=event_store, message_store=message_store)
-        events = event_store.get_events()
-        assert any(e.event_type == EVS_TASK_STATUS_CHANGED for e in events)
-        evt = [e for e in events if e.event_type == EVS_TASK_STATUS_CHANGED][0]
-        assert evt.state_diff.from_state == "CREATED"
-        assert evt.state_diff.to_state == "ACCEPTED"
-
-    async def test_eta_minutes_updated(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await update_task(cr["task_id"], "ACCEPTED", eta_minutes=15, state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(cr["task_id"])
-        assert task.eta_minutes == 15
-
-    async def test_accepted_sets_accepted_at(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await update_task(cr["task_id"], "ACCEPTED", state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(cr["task_id"])
-        assert task.accepted_at is not None
-
-    async def test_completed_sets_completed_at(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        await update_task(cr["task_id"], "ACCEPTED", state_store=state_store, event_store=event_store, message_store=message_store)
-        await update_task(cr["task_id"], "IN_PROGRESS", state_store=state_store, event_store=event_store, message_store=message_store)
-        await update_task(cr["task_id"], "COMPLETED", state_store=state_store, event_store=event_store, message_store=message_store)
-        task = state_store.get_task(cr["task_id"])
-        assert task.completed_at is not None
-
-    async def test_full_lifecycle(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        cr = await create_task("EVS_CLEANING", "BED-1", state_store=state_store, event_store=event_store, message_store=message_store)
-        tid = cr["task_id"]
-        for status in ["ACCEPTED", "IN_PROGRESS", "COMPLETED"]:
-            result = await update_task(tid, status, state_store=state_store, event_store=event_store, message_store=message_store)
-            assert result["ok"] is True
-        assert state_store.get_task(tid).state == TaskState.COMPLETED
-
-
-# ===================================================================
-# schedule_transport
-# ===================================================================
-
-class TestScheduleTransport:
-
-    async def test_creates_transport(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_patient(state_store, "P-1")
-        result = await schedule_transport(
-            "P-1", "ED Bay 1", "4-North 401A",
-            state_store=state_store, event_store=event_store, message_store=message_store,
-        )
-        assert result["ok"] is True
-        assert result["patient_id"] == "P-1"
-        assert "transport_id" in result
-
-    async def test_transport_stored_in_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_patient(state_store, "P-1")
-        result = await schedule_transport(
-            "P-1", "ED Bay 1", "4-North 401A",
-            state_store=state_store, event_store=event_store, message_store=message_store,
-        )
-        transport = state_store.get_transport(result["transport_id"])
-        assert transport is not None
-        assert transport.patient_id == "P-1"
-        assert transport.from_location == "ED Bay 1"
-        assert transport.to_location == "4-North 401A"
-        assert transport.state == TaskState.CREATED
-
-    async def test_emits_transport_scheduled_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_patient(state_store, "P-1")
-        await schedule_transport(
-            "P-1", "ED Bay 1", "4-North 401A",
-            state_store=state_store, event_store=event_store, message_store=message_store,
-        )
-        events = event_store.get_events()
-        assert len(events) == 1
-        assert events[0].event_type == TRANSPORT_SCHEDULED
-
-    async def test_publishes_message(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_patient(state_store, "P-1")
-        await schedule_transport(
-            "P-1", "ED Bay 1", "4-North 401A",
-            state_store=state_store, event_store=event_store, message_store=message_store,
-        )
-        messages = message_store.get_messages()
-        assert len(messages) == 1
-        assert messages[0].agent_name == "transport-ops"
-        assert messages[0].intent_tag == IntentTag.EXECUTE
-
-    async def test_patient_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        result = await schedule_transport(
-            "P-FAKE", "ED", "Room",
-            state_store=state_store, event_store=event_store, message_store=message_store,
-        )
+    async def test_vendor_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_scan_with_reorder(state_store)
+        result = await create_purchase_order("SCAN-001", "VND-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
         assert result["ok"] is False
         assert "not found" in result["error"]
 
-    async def test_custom_priority(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
-        _seed_patient(state_store, "P-1")
-        result = await schedule_transport(
-            "P-1", "ED", "Room", priority="STAT",
-            state_store=state_store, event_store=event_store, message_store=message_store,
+    async def test_no_items_to_reorder(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store)
+        scan = ScanResult(id="SCAN-EMPTY", closet_id="CLO-1", state=ScanState.ITEMS_IDENTIFIED)
+        state_store.scans["SCAN-EMPTY"] = scan
+        result = await create_purchase_order("SCAN-EMPTY", "VND-MED-01", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
+        assert "no items to reorder" in result["error"]
+
+
+# ===================================================================
+# approve_purchase_order
+# ===================================================================
+
+class TestApprovePurchaseOrder:
+
+    async def test_approves_pending_po(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        state_store.purchase_orders["PO-1"] = po
+        result = await approve_purchase_order("PO-1", approved=True, note="Looks good", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert result["approved"] is True
+        assert state_store.get_purchase_order("PO-1").state == POState.APPROVED
+
+    async def test_rejects_pending_po(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        state_store.purchase_orders["PO-1"] = po
+        result = await approve_purchase_order("PO-1", approved=False, note="Too expensive", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert result["approved"] is False
+        assert state_store.get_purchase_order("PO-1").state == POState.CANCELLED
+
+    async def test_emits_human_approved_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        state_store.purchase_orders["PO-1"] = po
+        await approve_purchase_order("PO-1", approved=True, state_store=state_store, event_store=event_store, message_store=message_store)
+        assert any(e.event_type == PO_HUMAN_APPROVED for e in event_store.get_events())
+
+    async def test_emits_human_rejected_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.PENDING_APPROVAL)
+        state_store.purchase_orders["PO-1"] = po
+        await approve_purchase_order("PO-1", approved=False, state_store=state_store, event_store=event_store, message_store=message_store)
+        assert any(e.event_type == PO_HUMAN_REJECTED for e in event_store.get_events())
+
+    async def test_po_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await approve_purchase_order("PO-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
+
+    async def test_po_not_pending_returns_error(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        state_store.purchase_orders["PO-1"] = po
+        result = await approve_purchase_order("PO-1", approved=True, state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
+        assert "not pending approval" in result["error"]
+
+
+# ===================================================================
+# submit_purchase_order
+# ===================================================================
+
+class TestSubmitPurchaseOrder:
+
+    async def test_submits_approved_po(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        state_store.purchase_orders["PO-1"] = po
+        result = await submit_purchase_order("PO-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert state_store.get_purchase_order("PO-1").state == POState.SUBMITTED
+
+    async def test_emits_po_submitted_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.APPROVED)
+        state_store.purchase_orders["PO-1"] = po
+        await submit_purchase_order("PO-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert any(e.event_type == PO_SUBMITTED for e in event_store.get_events())
+
+    async def test_po_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await submit_purchase_order("PO-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
+
+    async def test_invalid_state_returns_error(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="V-1", vendor_name="Test", state=POState.CREATED)
+        state_store.purchase_orders["PO-1"] = po
+        result = await submit_purchase_order("PO-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
+
+
+# ===================================================================
+# create_shipment
+# ===================================================================
+
+class TestCreateShipment:
+
+    async def test_creates_shipment(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
+        state_store.purchase_orders["PO-1"] = po
+        result = await create_shipment("PO-1", "MedLine Logistics", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert "shipment_id" in result
+        assert "tracking_number" in result
+        assert result["carrier"] == "MedLine Logistics"
+
+    async def test_shipment_stored_in_state(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
+        state_store.purchase_orders["PO-1"] = po
+        result = await create_shipment("PO-1", "MedLine Logistics", state_store=state_store, event_store=event_store, message_store=message_store)
+        shipment = state_store.get_shipment(result["shipment_id"])
+        assert shipment is not None
+        assert shipment.po_id == "PO-1"
+        assert shipment.carrier == "MedLine Logistics"
+
+    async def test_emits_shipment_created_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_vendor(state_store)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.CONFIRMED, closet_id="CLO-1")
+        state_store.purchase_orders["PO-1"] = po
+        await create_shipment("PO-1", "MedLine Logistics", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert any(e.event_type == SHIPMENT_CREATED for e in event_store.get_events())
+
+    async def test_po_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await create_shipment("PO-FAKE", "Carrier", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
+
+
+# ===================================================================
+# receive_shipment
+# ===================================================================
+
+class TestReceiveShipment:
+
+    async def test_receives_shipment_and_restocks(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_item(state_store, current_qty=5)
+        _seed_vendor(state_store)
+        _seed_catalog_entry(state_store)
+
+        from app.models.entities import POLineItem
+        po = PurchaseOrder(
+            id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine",
+            state=POState.SHIPPED, closet_id="CLO-ICU-01",
+            line_items=[POLineItem(item_sku="SKU-NS-1000", item_name="Normal Saline", quantity=30, unit_price=8.50, extended_price=255.0, contract_tier=ContractTier.GPO_CONTRACT, criticality=ItemCriticality.CRITICAL)],
         )
-        transport = state_store.get_transport(result["transport_id"])
-        assert transport.priority == TransportPriority.STAT
+        state_store.purchase_orders["PO-1"] = po
+
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01", closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
+        state_store.shipments["SHP-1"] = shp
+
+        result = await receive_shipment("SHP-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is True
+        assert result["items_restocked"] == 1
+
+        # Item should now have 5 + 30 = 35
+        item = state_store.get_item("ITEM-001")
+        assert item.current_quantity == 35
+
+    async def test_transitions_shipment_to_delivered(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.SHIPPED, closet_id="CLO-ICU-01")
+        state_store.purchase_orders["PO-1"] = po
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01", closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
+        state_store.shipments["SHP-1"] = shp
+
+        await receive_shipment("SHP-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert state_store.get_shipment("SHP-1").state == ShipmentState.DELIVERED
+
+    async def test_emits_shipment_delivered_event(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        _seed_closet(state_store)
+        _seed_vendor(state_store)
+        po = PurchaseOrder(id="PO-1", scan_id="S-1", vendor_id="VND-MED-01", vendor_name="MedLine", state=POState.SHIPPED, closet_id="CLO-ICU-01")
+        state_store.purchase_orders["PO-1"] = po
+        shp = Shipment(id="SHP-1", po_id="PO-1", vendor_id="VND-MED-01", closet_id="CLO-ICU-01", state=ShipmentState.IN_TRANSIT)
+        state_store.shipments["SHP-1"] = shp
+
+        await receive_shipment("SHP-1", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert any(e.event_type == SHIPMENT_DELIVERED for e in event_store.get_events())
+
+    async def test_shipment_not_found(self, state_store: StateStore, event_store: EventStore, message_store: MessageStore):
+        result = await receive_shipment("SHP-FAKE", state_store=state_store, event_store=event_store, message_store=message_store)
+        assert result["ok"] is False
 
 
 # ===================================================================
@@ -487,10 +707,7 @@ class TestScheduleTransport:
 class TestPublishEvent:
 
     async def test_emits_generic_event(self, event_store: EventStore):
-        result = await publish_event(
-            "CustomEvent", "entity-1", {"key": "value"},
-            event_store=event_store,
-        )
+        result = await publish_event("CustomEvent", "entity-1", {"key": "value"}, event_store=event_store)
         assert result["ok"] is True
         assert "event_id" in result
         assert result["sequence"] >= 1
@@ -500,7 +717,6 @@ class TestPublishEvent:
         events = event_store.get_events()
         assert len(events) == 1
         assert events[0].event_type == "CustomEvent"
-        assert events[0].entity_id == "entity-1"
 
     async def test_empty_payload_defaults(self, event_store: EventStore):
         await publish_event("Test", "e-1", event_store=event_store)
@@ -514,31 +730,31 @@ class TestPublishEvent:
 
 class TestEscalate:
 
-    async def test_emits_sla_risk_event(self, event_store: EventStore, message_store: MessageStore):
+    async def test_emits_critical_shortage_event(self, event_store: EventStore, message_store: MessageStore):
         result = await escalate(
-            "SLA_BREACH", "BED-1", "HIGH", "Cleaning overdue",
+            "critical_shortage", "ITEM-001", "HIGH", "IV saline critically low",
             event_store=event_store, message_store=message_store,
         )
         assert result["ok"] is True
-        assert result["issue_type"] == "SLA_BREACH"
+        assert result["issue_type"] == "critical_shortage"
         assert result["severity"] == "HIGH"
 
-    async def test_event_type_is_sla_risk(self, event_store: EventStore, message_store: MessageStore):
+    async def test_event_type_is_critical_shortage(self, event_store: EventStore, message_store: MessageStore):
         await escalate(
-            "SLA_BREACH", "BED-1", "HIGH", "Cleaning overdue",
+            "critical_shortage", "ITEM-001", "HIGH", "IV saline critically low",
             event_store=event_store, message_store=message_store,
         )
         events = event_store.get_events()
-        assert events[0].event_type == SLA_RISK_DETECTED
+        assert events[0].event_type == CRITICAL_SHORTAGE_DETECTED
         assert events[0].payload["severity"] == "HIGH"
 
     async def test_publishes_escalation_message(self, event_store: EventStore, message_store: MessageStore):
         await escalate(
-            "SLA_BREACH", "BED-1", "HIGH", "Cleaning overdue",
+            "critical_shortage", "ITEM-001", "HIGH", "IV saline critically low",
             event_store=event_store, message_store=message_store,
         )
         messages = message_store.get_messages()
         assert len(messages) == 1
         assert messages[0].intent_tag == IntentTag.ESCALATE
-        assert messages[0].agent_name == "policy-safety"
+        assert messages[0].agent_name == "compliance-gate"
         assert "ESCALATION" in messages[0].content

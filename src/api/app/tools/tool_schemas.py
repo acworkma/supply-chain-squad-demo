@@ -9,142 +9,218 @@ for ``PromptAgentDefinition.tools`` (``agents.create_version()``).
 
 from azure.ai.projects.models import FunctionTool
 
-# ── Individual tool schemas ─────────────────────────────────────────
+# ── Read-only tools ─────────────────────────────────────────────────
 
-GET_PATIENT = {
+GET_SCAN = {
     "type": "function",
     "function": {
-        "name": "get_patient",
-        "description": "Look up a single patient by their unique ID. Returns patient demographics, state, location, acuity, and assigned bed.",
+        "name": "get_scan",
+        "description": "Look up a single closet scan result by ID. Returns scan state, closet, items scanned, items below par, and linked PO IDs.",
         "parameters": {
             "type": "object",
             "properties": {
-                "patient_id": {"type": "string", "description": "The unique patient identifier (e.g. P-001)."},
+                "scan_id": {"type": "string", "description": "The unique scan identifier (e.g. SCAN-001)."},
             },
-            "required": ["patient_id"],
+            "required": ["scan_id"],
         },
     },
 }
 
-GET_BEDS = {
+GET_ITEMS = {
     "type": "function",
     "function": {
-        "name": "get_beds",
-        "description": "List hospital beds, optionally filtered by unit, state, and/or diagnosis. When diagnosis is provided, only beds on clinically appropriate units are returned (e.g., cardiac patients only see Cardiac/Telemetry beds).",
+        "name": "get_items",
+        "description": "List supply items in hospital closets, optionally filtered by closet, category, and/or criticality. Returns item ID, SKU, name, quantities, par level, and days until stockout.",
         "parameters": {
             "type": "object",
             "properties": {
-                "unit": {"type": "string", "description": "Filter by nursing unit (e.g. '4-North'). Omit to return all units."},
-                "state": {"type": "string", "description": "Filter by bed state (OCCUPIED, RESERVED, DIRTY, CLEANING, READY, BLOCKED). Omit to return all states."},
-                "diagnosis": {"type": "string", "description": "Patient diagnosis or admission reason. When provided, filters beds to clinically appropriate units only (e.g., 'chest pain' returns only Cardiac/Telemetry beds)."},
-            },
-            "required": [],
-        },
-    },
-}
-
-GET_TASKS = {
-    "type": "function",
-    "function": {
-        "name": "get_tasks",
-        "description": "List tasks, optionally filtered by state and/or type. Returns task ID, type, subject, state, priority.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "task_state": {"type": "string", "description": "Filter by task state (CREATED, ACCEPTED, IN_PROGRESS, COMPLETED, ESCALATED, CANCELLED)."},
-                "task_type": {"type": "string", "description": "Filter by task type (EVS_CLEANING, TRANSPORT, BED_PREP, OTHER)."},
+                "closet_id": {"type": "string", "description": "Filter by closet (e.g. 'CLO-ICU-01'). Omit to return all closets."},
+                "category": {"type": "string", "enum": ["IV_THERAPY", "SURGICAL", "PPE", "WOUND_CARE", "CLEANING", "LINEN", "GENERAL", "SHARPS"], "description": "Filter by item category."},
+                "criticality": {"type": "string", "enum": ["CRITICAL", "STANDARD", "LOW"], "description": "Filter by item criticality."},
             },
             "required": [],
         },
     },
 }
 
-RESERVE_BED = {
+GET_VENDORS = {
     "type": "function",
     "function": {
-        "name": "reserve_bed",
-        "description": "Reserve a specific bed for a patient. Transitions bed to RESERVED state, creates a reservation with a hold timer. Only works on READY beds.",
+        "name": "get_vendors",
+        "description": "List vendors, optionally filtered by contract tier. Returns vendor name, lead times, minimum order value, and contract tier.",
         "parameters": {
             "type": "object",
             "properties": {
-                "bed_id": {"type": "string", "description": "The bed to reserve (e.g. BED-401B)."},
-                "patient_id": {"type": "string", "description": "The patient to reserve the bed for."},
-                "hold_minutes": {"type": "integer", "description": "How long to hold the reservation in minutes. Default 30.", "default": 30},
+                "contract_tier": {"type": "string", "enum": ["GPO_CONTRACT", "PREFERRED", "SPOT_BUY"], "description": "Filter by contract tier."},
             },
-            "required": ["bed_id", "patient_id"],
+            "required": [],
         },
     },
 }
 
-RELEASE_BED_RESERVATION = {
+GET_PURCHASE_ORDERS = {
     "type": "function",
     "function": {
-        "name": "release_bed_reservation",
-        "description": "Release a bed reservation, transitioning the bed back to READY. Deactivates any active reservations on this bed.",
+        "name": "get_purchase_orders",
+        "description": "List purchase orders, optionally filtered by state. Returns PO details including vendor, line items, total cost, and approval status.",
         "parameters": {
             "type": "object",
             "properties": {
-                "bed_id": {"type": "string", "description": "The bed whose reservation to release."},
+                "po_state": {"type": "string", "enum": ["CREATED", "PENDING_APPROVAL", "APPROVED", "SUBMITTED", "CONFIRMED", "SHIPPED", "RECEIVED", "CANCELLED"], "description": "Filter by PO state."},
             },
-            "required": ["bed_id"],
+            "required": [],
         },
     },
 }
 
-CREATE_TASK = {
+GET_SHIPMENTS = {
     "type": "function",
     "function": {
-        "name": "create_task",
-        "description": "Create a new task (e.g. EVS cleaning, bed prep). The task starts in CREATED state.",
+        "name": "get_shipments",
+        "description": "List shipments, optionally filtered by state. Returns shipment details including carrier, tracking number, and expected delivery.",
         "parameters": {
             "type": "object",
             "properties": {
-                "task_type": {"type": "string", "enum": ["EVS_CLEANING", "TRANSPORT", "BED_PREP", "OTHER"], "description": "The type of task to create."},
-                "subject_id": {"type": "string", "description": "The entity this task is about (e.g. a bed ID)."},
-                "priority": {"type": "string", "enum": ["STAT", "URGENT", "ROUTINE"], "description": "Task priority. Default ROUTINE.", "default": "ROUTINE"},
-                "due_by": {"type": "string", "description": "ISO 8601 datetime for when the task must be completed. Optional."},
-                "notes": {"type": "string", "description": "Free-text notes about the task."},
+                "shipment_state": {"type": "string", "enum": ["CREATED", "SHIPPED", "IN_TRANSIT", "DELIVERED", "DELAYED"], "description": "Filter by shipment state."},
             },
-            "required": ["task_type", "subject_id"],
+            "required": [],
         },
     },
 }
 
-UPDATE_TASK = {
+# ── Scan lifecycle ──────────────────────────────────────────────────
+
+INITIATE_SCAN = {
     "type": "function",
     "function": {
-        "name": "update_task",
-        "description": "Update a task's status and/or ETA. Transitions must follow the task state machine.",
+        "name": "initiate_scan",
+        "description": "Initiate a closet scan. Creates a ScanResult in INITIATED state and emits a ClosetScanInitiated event.",
         "parameters": {
             "type": "object",
             "properties": {
-                "task_id": {"type": "string", "description": "The task to update."},
-                "new_status": {"type": "string", "enum": ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "ESCALATED", "CANCELLED"], "description": "The new task state."},
-                "eta_minutes": {"type": "integer", "description": "Updated estimated time to completion in minutes."},
+                "closet_id": {"type": "string", "description": "The closet to scan (e.g. CLO-ICU-01)."},
             },
-            "required": ["task_id", "new_status"],
+            "required": ["closet_id"],
         },
     },
 }
 
-SCHEDULE_TRANSPORT = {
+ANALYZE_SCAN = {
     "type": "function",
     "function": {
-        "name": "schedule_transport",
-        "description": "Schedule a patient transport between two locations. Creates a transport record in CREATED state.",
+        "name": "analyze_scan",
+        "description": "Analyze a scan: compare current quantities against par levels, identify items below par, compute days-until-stockout, and transition scan to ITEMS_IDENTIFIED.",
         "parameters": {
             "type": "object",
             "properties": {
-                "patient_id": {"type": "string", "description": "The patient being transported."},
-                "from_location": {"type": "string", "description": "Pickup location (e.g. 'ED Bay 3')."},
-                "to_location": {"type": "string", "description": "Destination (e.g. '4-North 401B')."},
-                "priority": {"type": "string", "enum": ["STAT", "URGENT", "ROUTINE"], "description": "Transport priority. Default ROUTINE.", "default": "ROUTINE"},
-                "earliest_time": {"type": "string", "description": "ISO 8601 earliest departure time. Optional."},
+                "scan_id": {"type": "string", "description": "The scan to analyze."},
             },
-            "required": ["patient_id", "from_location", "to_location"],
+            "required": ["scan_id"],
         },
     },
 }
+
+# ── Sourcing ────────────────────────────────────────────────────────
+
+LOOKUP_VENDOR_CATALOG = {
+    "type": "function",
+    "function": {
+        "name": "lookup_vendor_catalog",
+        "description": "Look up the vendor catalog for a given item SKU. Returns catalog entries across all vendors with pricing, stock status, and lead times. Recommends the best vendor by contract tier and availability.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "item_sku": {"type": "string", "description": "The item SKU to look up in vendor catalogs."},
+            },
+            "required": ["item_sku"],
+        },
+    },
+}
+
+# ── Purchase order lifecycle ────────────────────────────────────────
+
+CREATE_PURCHASE_ORDER = {
+    "type": "function",
+    "function": {
+        "name": "create_purchase_order",
+        "description": "Create a purchase order for a scan's reorder list. Builds line items from the reorder items, computes total cost. POs under $1000 are auto-approved; POs >= $1000 require human approval.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scan_id": {"type": "string", "description": "The scan that identified items to reorder."},
+                "vendor_id": {"type": "string", "description": "The vendor to order from."},
+            },
+            "required": ["scan_id", "vendor_id"],
+        },
+    },
+}
+
+APPROVE_PURCHASE_ORDER = {
+    "type": "function",
+    "function": {
+        "name": "approve_purchase_order",
+        "description": "Approve or reject a purchase order that is pending human approval. Transitions PO state from PENDING_APPROVAL to APPROVED (or CANCELLED if rejected).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "po_id": {"type": "string", "description": "The purchase order to approve or reject."},
+                "approved": {"type": "boolean", "description": "True to approve, false to reject."},
+                "note": {"type": "string", "description": "Optional approval/rejection note."},
+            },
+            "required": ["po_id", "approved"],
+        },
+    },
+}
+
+SUBMIT_PURCHASE_ORDER = {
+    "type": "function",
+    "function": {
+        "name": "submit_purchase_order",
+        "description": "Submit an approved purchase order to the vendor. Transitions PO from APPROVED to SUBMITTED.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "po_id": {"type": "string", "description": "The purchase order to submit."},
+            },
+            "required": ["po_id"],
+        },
+    },
+}
+
+# ── Fulfillment ─────────────────────────────────────────────────────
+
+CREATE_SHIPMENT = {
+    "type": "function",
+    "function": {
+        "name": "create_shipment",
+        "description": "Create a shipment record for a confirmed purchase order. Generates a tracking number and sets expected delivery based on vendor lead time.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "po_id": {"type": "string", "description": "The purchase order being shipped."},
+                "carrier": {"type": "string", "description": "Carrier name (e.g. 'MedLine Logistics')."},
+            },
+            "required": ["po_id", "carrier"],
+        },
+    },
+}
+
+RECEIVE_SHIPMENT = {
+    "type": "function",
+    "function": {
+        "name": "receive_shipment",
+        "description": "Mark a shipment as delivered and update closet supply item quantities. Transitions shipment to DELIVERED, PO to RECEIVED, and increments item current_quantity values.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "shipment_id": {"type": "string", "description": "The shipment being received."},
+            },
+            "required": ["shipment_id"],
+        },
+    },
+}
+
+# ── Generic event & escalation ──────────────────────────────────────
 
 PUBLISH_EVENT = {
     "type": "function",
@@ -167,11 +243,11 @@ ESCALATE = {
     "type": "function",
     "function": {
         "name": "escalate",
-        "description": "Escalate an issue by emitting an SlaRiskDetected event. Use when SLA thresholds are at risk or safety concerns arise.",
+        "description": "Escalate an issue by emitting a CriticalShortageDetected event. Use when supply levels are critically low, compliance concerns arise, or vendor issues threaten patient care.",
         "parameters": {
             "type": "object",
             "properties": {
-                "issue_type": {"type": "string", "description": "Category of issue (e.g. 'sla_breach', 'safety_concern', 'capacity_overflow')."},
+                "issue_type": {"type": "string", "description": "Category of issue (e.g. 'critical_shortage', 'compliance_violation', 'vendor_stockout')."},
                 "entity_id": {"type": "string", "description": "The entity involved in the escalation."},
                 "severity": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"], "description": "Severity level."},
                 "message": {"type": "string", "description": "Human-readable description of the issue."},
@@ -182,22 +258,20 @@ ESCALATE = {
 }
 
 
-# ── Per-agent tool sets ─────────────────────────────────────────────
+# ── Per-agent tool sets (5 agents per DOMAIN-C-002) ─────────────────
 
-FLOW_COORDINATOR_TOOLS = [GET_PATIENT, GET_BEDS, GET_TASKS, PUBLISH_EVENT, ESCALATE]
-PREDICTIVE_CAPACITY_TOOLS = [GET_BEDS, GET_TASKS, GET_PATIENT, PUBLISH_EVENT]
-BED_ALLOCATION_TOOLS = [GET_BEDS, GET_PATIENT, RESERVE_BED, RELEASE_BED_RESERVATION, PUBLISH_EVENT]
-EVS_TASKING_TOOLS = [GET_BEDS, GET_TASKS, CREATE_TASK, UPDATE_TASK, PUBLISH_EVENT]
-TRANSPORT_OPS_TOOLS = [GET_PATIENT, GET_TASKS, SCHEDULE_TRANSPORT, PUBLISH_EVENT]
-POLICY_SAFETY_TOOLS = [GET_PATIENT, GET_BEDS, GET_TASKS, ESCALATE, PUBLISH_EVENT]
+SUPPLY_COORDINATOR_TOOLS = [GET_SCAN, GET_ITEMS, GET_VENDORS, GET_PURCHASE_ORDERS, GET_SHIPMENTS, PUBLISH_EVENT, ESCALATE]
+SUPPLY_SCANNER_TOOLS = [GET_ITEMS, INITIATE_SCAN, ANALYZE_SCAN, PUBLISH_EVENT]
+CATALOG_SOURCER_TOOLS = [GET_ITEMS, GET_VENDORS, LOOKUP_VENDOR_CATALOG, PUBLISH_EVENT]
+ORDER_MANAGER_TOOLS = [GET_SCAN, GET_PURCHASE_ORDERS, CREATE_PURCHASE_ORDER, APPROVE_PURCHASE_ORDER, SUBMIT_PURCHASE_ORDER, CREATE_SHIPMENT, RECEIVE_SHIPMENT, PUBLISH_EVENT]
+COMPLIANCE_GATE_TOOLS = [GET_PURCHASE_ORDERS, GET_ITEMS, APPROVE_PURCHASE_ORDER, ESCALATE, PUBLISH_EVENT]
 
 AGENT_TOOLS: dict[str, list[dict]] = {
-    "bed-coordinator": FLOW_COORDINATOR_TOOLS,
-    "predictive-capacity": PREDICTIVE_CAPACITY_TOOLS,
-    "bed-allocation": BED_ALLOCATION_TOOLS,
-    "evs-tasking": EVS_TASKING_TOOLS,
-    "transport-ops": TRANSPORT_OPS_TOOLS,
-    "policy-safety": POLICY_SAFETY_TOOLS,
+    "supply-coordinator": SUPPLY_COORDINATOR_TOOLS,
+    "supply-scanner": SUPPLY_SCANNER_TOOLS,
+    "catalog-sourcer": CATALOG_SOURCER_TOOLS,
+    "order-manager": ORDER_MANAGER_TOOLS,
+    "compliance-gate": COMPLIANCE_GATE_TOOLS,
 }
 
 

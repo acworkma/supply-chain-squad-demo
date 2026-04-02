@@ -26,23 +26,16 @@ interface ScenarioGroup {
 
 const SCENARIO_GROUPS: ScenarioGroup[] = [
   {
-    category: "Admissions",
+    category: "Fulfillment",
     items: [
-      { label: "ER Admission", endpoint: "/api/scenario/er-admission", hoverColor: "hover:text-tower-accent" },
-      { label: "OR Admission", endpoint: "/api/scenario/or-admission", hoverColor: "hover:text-tower-accent" },
+      { label: "Standard Fulfillment", endpoint: "/api/scenario/standard-fulfillment", hoverColor: "hover:text-tower-accent" },
+      { label: "Rush Order", endpoint: "/api/scenario/rush-order", hoverColor: "hover:text-tower-accent" },
     ],
   },
   {
     category: "Disruptions",
     items: [
-      { label: "Disruption + Replan", endpoint: "/api/scenario/disruption-replan", hoverColor: "hover:text-tower-warning" },
-      { label: "EVS-Gated", endpoint: "/api/scenario/evs-gated", hoverColor: "hover:text-tower-warning" },
-    ],
-  },
-  {
-    category: "Transfers",
-    items: [
-      { label: "Unit Transfer", endpoint: "/api/scenario/unit-transfer", hoverColor: "hover:text-purple-400" },
+      { label: "Supplier Delay", endpoint: "/api/scenario/supplier-delay", hoverColor: "hover:text-tower-warning" },
     ],
   },
 ];

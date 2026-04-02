@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import type { Bed, Patient, Task, Transport, Reservation, HospitalConfig, StateResponse } from "@/types/api";
+import type { SupplyCloset, SupplyItem, Vendor, CatalogEntry, PurchaseOrder, ScanResult, Shipment, StateResponse } from "@/types/api";
 
 interface ApiState {
-  beds: Record<string, Bed>;
-  patients: Record<string, Patient>;
-  tasks: Record<string, Task>;
-  transports: Record<string, Transport>;
-  reservations: Record<string, Reservation>;
-  hospitalConfig: HospitalConfig | null;
+  closets: Record<string, SupplyCloset>;
+  supplyItems: Record<string, SupplyItem>;
+  vendors: Record<string, Vendor>;
+  catalog: Record<string, CatalogEntry>;
+  purchaseOrders: Record<string, PurchaseOrder>;
+  scans: Record<string, ScanResult>;
+  shipments: Record<string, Shipment>;
   loading: boolean;
   error: string | null;
 }
@@ -16,12 +17,13 @@ const POLL_INTERVAL = 2000;
 
 export function useApi(): ApiState {
   const [state, setState] = useState<ApiState>({
-    beds: {},
-    patients: {},
-    tasks: {},
-    transports: {},
-    reservations: {},
-    hospitalConfig: null,
+    closets: {},
+    supplyItems: {},
+    vendors: {},
+    catalog: {},
+    purchaseOrders: {},
+    scans: {},
+    shipments: {},
     loading: true,
     error: null,
   });
@@ -38,12 +40,13 @@ export function useApi(): ApiState {
         const data: StateResponse = await res.json();
         if (mountedRef.current) {
           setState({
-            beds: data.beds ?? {},
-            patients: data.patients ?? {},
-            tasks: data.tasks ?? {},
-            transports: data.transports ?? {},
-            reservations: data.reservations ?? {},
-            hospitalConfig: data.hospital_config ?? null,
+            closets: data.closets ?? {},
+            supplyItems: data.supply_items ?? {},
+            vendors: data.vendors ?? {},
+            catalog: data.catalog ?? {},
+            purchaseOrders: data.purchase_orders ?? {},
+            scans: data.scans ?? {},
+            shipments: data.shipments ?? {},
             loading: false,
             error: null,
           });

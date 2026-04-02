@@ -1,4 +1,4 @@
-"""Pydantic v2 entity models for the bed-management domain."""
+"""Pydantic v2 entity models for the supply-closet replenishment domain."""
 
 from datetime import datetime, timezone
 from typing import Optional
@@ -6,13 +6,15 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .enums import (
-    AdmissionSource,
-    BedState,
+    ContractTier,
     IntentTag,
-    PatientState,
-    TaskState,
-    TaskType,
-    TransportPriority,
+    ItemCategory,
+    ItemCriticality,
+    POApprovalStatus,
+    POState,
+    ScanState,
+    ShipmentState,
+    VendorStockStatus,
 )
 
 
@@ -20,67 +22,112 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class Bed(BaseModel):
-    id: str
-    unit: str
-    room_number: str
-    bed_letter: str
-    state: BedState = BedState.READY
-    patient_id: Optional[str] = None
-    reserved_for_patient_id: Optional[str] = None
-    reserved_until: Optional[datetime] = None
-    last_state_change: datetime = Field(default_factory=_utcnow)
-
-
-class Patient(BaseModel):
+class SupplyCloset(BaseModel):
     id: str
     name: str
-    mrn: str
-    state: PatientState = PatientState.AWAITING_BED
-    current_location: str
-    assigned_bed_id: Optional[str] = None
-    diagnosis: str = ""
-    acuity_level: int = Field(default=3, ge=1, le=5)
-    admission_source: AdmissionSource = AdmissionSource.ER
-    requested_at: datetime = Field(default_factory=_utcnow)
-    eta_minutes: Optional[int] = None
+    floor: str
+    unit: str
+    location: str
 
 
-class Task(BaseModel):
+class SupplyItem(BaseModel):
     id: str
-    type: TaskType
-    subject_id: str
-    state: TaskState = TaskState.CREATED
-    priority: TransportPriority = TransportPriority.ROUTINE
-    assigned_to: Optional[str] = None
+    sku: str
+    name: str
+    closet_id: str
+    category: ItemCategory
+    criticality: ItemCriticality
+    par_level: int
+    reorder_quantity: int
+    current_quantity: int
+    unit_of_measure: str
+    consumption_rate_per_day: float
+    last_restocked: datetime = Field(default_factory=_utcnow)
+
+
+class Vendor(BaseModel):
+    id: str
+    name: str
+    contract_tier: ContractTier
+    lead_time_days: int
+    expedite_lead_time_days: int
+    minimum_order_value: float
+
+
+class CatalogEntry(BaseModel):
+    id: str
+    vendor_id: str
+    item_sku: str
+    unit_price: float
+    contract_tier: ContractTier
+    stock_status: VendorStockStatus
+    lead_time_days: int
+    substitute_sku: Optional[str] = None
+
+
+class POLineItem(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_price: float
+    extended_price: float
+    contract_tier: ContractTier
+    criticality: ItemCriticality
+
+
+class PurchaseOrder(BaseModel):
+    id: str
+    scan_id: str
+    vendor_id: str
+    vendor_name: str
+    state: POState = POState.CREATED
+    approval_status: POApprovalStatus = POApprovalStatus.AUTO_APPROVED
+    line_items: list[POLineItem] = Field(default_factory=list)
+    total_cost: float = 0.0
     created_at: datetime = Field(default_factory=_utcnow)
-    accepted_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    due_by: Optional[datetime] = None
-    notes: str = ""
-    eta_minutes: Optional[int] = None
+    approved_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    requires_human_approval: bool = False
+    approval_note: str = ""
+    closet_id: str = ""
 
 
-class Transport(BaseModel):
+class ReorderItem(BaseModel):
+    item_id: str
+    item_sku: str
+    item_name: str
+    current_quantity: int
+    par_level: int
+    reorder_quantity: int
+    criticality: ItemCriticality
+    days_until_stockout: float
+    recommended_vendor_id: Optional[str] = None
+    recommended_unit_price: Optional[float] = None
+
+
+class ScanResult(BaseModel):
     id: str
-    patient_id: str
-    from_location: str
-    to_location: str
-    priority: TransportPriority = TransportPriority.ROUTINE
-    state: TaskState = TaskState.CREATED
-    scheduled_time: Optional[datetime] = None
-    started_at: Optional[datetime] = None
+    closet_id: str
+    state: ScanState = ScanState.INITIATED
+    initiated_at: datetime = Field(default_factory=_utcnow)
     completed_at: Optional[datetime] = None
-    assigned_to: Optional[str] = None
+    items_scanned: int = 0
+    items_below_par: int = 0
+    items_to_reorder: list[ReorderItem] = Field(default_factory=list)
+    purchase_order_ids: list[str] = Field(default_factory=list)
 
 
-class Reservation(BaseModel):
+class Shipment(BaseModel):
     id: str
-    bed_id: str
-    patient_id: str
-    created_at: datetime = Field(default_factory=_utcnow)
-    hold_until: datetime
-    is_active: bool = True
+    po_id: str
+    vendor_id: str
+    closet_id: str
+    state: ShipmentState = ShipmentState.CREATED
+    carrier: str = ""
+    tracking_number: Optional[str] = None
+    expected_delivery: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    items_count: int = 0
 
 
 class AgentMessage(BaseModel):
