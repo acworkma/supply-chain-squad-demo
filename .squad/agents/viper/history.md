@@ -58,9 +58,21 @@
 - **Responsive**: hidden below `lg` breakpoint via `hidden lg:flex` wrapper div.
 - **Zero new dependencies** — Bot, ChevronLeft, ChevronRight already in lucide-react.
 
+### 2026-04-02: WI-P3-011 — Supply Chain TypeScript Types + Color Map + InventoryBoard
+
+- **`types/api.ts` fully rewritten** — Replaced all bed management types (Bed, Patient, Transport, Reservation, BedState, PatientState, TransportPriority, AdmissionSource) with supply chain equivalents: Order, OrderItem, Product, Shipment, Allocation, Task. New enums: OrderState (9 values), ProductState (6), ShipmentState (7), TaskState (6), TaskType (5), FulfillmentPriority (3), SourceChannel (4). Config types renamed: HospitalConfig → FulfillmentConfig, CampusConfig → WarehouseConfig, UnitConfig → ZoneConfig. StateResponse keys updated to match.
+- **`lib/colors.ts` fully rewritten** — Replaced patientStateBadge/bedStateBadge/bedStateDotColor/transportPriorityBadge with productStateBadge/productStateDotColor/orderStateBadge/shipmentStateBadge/fulfillmentPriorityBadge. Agent keyword colors updated from hospital agents to supply chain agents (supply-coord, demand, warehouse, logistics, compliance, etc). eventTypeColor keywords updated for supply chain domain.
+- **`components/dashboard/BedBoard.tsx` → InventoryBoard** — Component fully replaced. Groups products by warehouse_id (not unit). Each cell shows SKU (mono), product name, state dot + label, qty on-hand / allocated, location code. Amber ring highlight when qty ≤ reorder_point. Uses Package icon instead of BedDouble. Grid min-width bumped to 130px for more data density.
+- **Design decisions**: Kept same dark-mode Tailwind patterns, same props-down architecture (UI-001). No self-fetching. All types use string unions (not enums) per existing convention. AgentMessage and IntentTag kept as-is — domain-agnostic.
+
 - **Collapsible long messages**: Messages >120 chars or containing `\n` start collapsed, showing only the first sentence as a summary with a `ChevronRight` toggle icon.
 - **Animation technique**: Uses CSS `grid-template-rows: 0fr → 1fr` with `transition-[grid-template-rows]` for smooth expand/collapse — cleaner than max-height hacks, no JS measurement needed.
 - **State management**: Parent `AgentConversation` holds a `Set<string>` of expanded message IDs. Toggle is passed down via `onToggle` callback. Short messages render with no toggle, unchanged.
 - **Extracted `MessageBubble` sub-component**: Keeps the map body clean. Receives `msg`, `expanded`, `onToggle` props.
 - **Summary extraction**: `summarize()` finds the first `.` or `\n` boundary; falls back to full content for short messages.
 - **Zero new dependencies** — `ChevronRight` already in lucide-react, all styling via Tailwind utilities + tower-* tokens.
+
+### 2026-04-02: Cross-agent note from Scribe (Phase 3 kickoff)
+- **Phase 3 supply chain pivot initiated.** Maverick designed full domain model — see decisions.md DOMAIN-P3-001, DOMAIN-P3-002, PLAN-P3-001.
+- Viper assigned WI-P3-011 through WI-P3-014 (InventoryBoard, OrderQueue, ShipmentTracker, CommandCenter wiring). BedBoard→InventoryBoard, PatientQueue→OrderQueue, TransportQueue→ShipmentTracker.
+- Goose is rewriting backend domain model (critical path). Jester prepping test fixtures. TypeScript types need to mirror new Pydantic models once Goose lands WI-P3-001.

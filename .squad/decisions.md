@@ -99,6 +99,21 @@
 - **Author:** Maverick | **Date:** 2026-03-10 | **Status:** Pending user answers
 - Long-running mode where patients arrive every X minutes until Stop or divert. Design questions raised, awaiting acworkma's answers before implementation begins.
 
+### DOMAIN-P3-001: Supply Chain Domain Model
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Implementing
+- Full domain pivot from bed management → supply chain (distribution/fulfillment center). 1:1 entity mapping: Patient→Order, Bed→Product, Task→Task, Transport→Shipment, Reservation→Allocation. New enums: OrderState (9 states), ProductState (6 states), ShipmentState (7 states), TaskType (PICK/PACK/QUALITY_CHECK/RESTOCK), FulfillmentPriority (EXPEDITED/HIGH/STANDARD), SourceChannel (ECOMMERCE/WHOLESALE/RETAIL/RETURNS). TaskState and IntentTag unchanged. 10 tools (1:1 mapping). Config: 2 warehouses (east-dc, west-dc), 3 zones (Zone-A Electronics, Zone-B General, Zone-C General). Seed data: 16 products, 5 existing orders. 3 scenarios: standard-fulfillment, supplier-delay, rush-order. All 10 ADRs preserved unchanged.
+- **Design doc:** `.squad/decisions/inbox/maverick-supply-chain-domain-model.md` (archived)
+
+### DOMAIN-P3-002: Supply Chain Agent Roster
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** Implementing
+- 6 agents → 6 agents, 1:1 mapping. bed-coordinator→supply-coordinator, predictive-capacity→demand-forecaster, bed-allocation→inventory-allocator, evs-tasking→warehouse-ops, transport-ops→logistics-planner, policy-safety→compliance-monitor. Same supervisor pattern (ADR-004). Per-agent tool sets defined. Prompt files renamed accordingly.
+- **Design doc:** `.squad/decisions/inbox/maverick-supply-chain-agent-roster.md` (archived)
+
+### PLAN-P3-001: Phase 3 Work Item Decomposition — 17 WIs
+- **Author:** Maverick | **Date:** 2026-04-02 | **Status:** In Progress
+- 17 WIs: Goose 9 (WI-P3-001 through WI-P3-009, critical path), Viper 4 (WI-P3-011 through WI-P3-014), Iceman 2 (WI-P3-016, WI-P3-017), Jester 2 (WI-P3-010, WI-P3-015). Critical path: enums→entities→transitions→store→tools→schemas→prompts→orchestrator→scenarios→tests. UI parallelizable after store stabilizes.
+- **Design doc:** `.squad/decisions/inbox/maverick-phase3-work-items.md` (archived)
+
 ## Governance
 
 - All meaningful changes require team consensus

@@ -83,7 +83,15 @@
 - Created `src/api/tests/test_config_endpoint.py`: 17 tests — 8 unit tests for the store, 9 endpoint integration tests. All 372 tests pass.
 - Pattern: runtime config is a transparent overlay — orchestrator doesn't need to know whether a value came from env vars or a PUT call. The `_parse_json` helper is shared.
 
-### 2026-03-27: Cross-team rename — happy-path → er-admission
+### 2026-04-02: WI-P3-001 + WI-P3-002 — Supply Chain Domain Model Rewrite (Enums, Entities, Events, Transitions)
+- Rewrote 5 files in `src/api/app/models/`: `enums.py`, `entities.py`, `events.py`, `transitions.py`, `__init__.py`
+- **Enums replaced:** `BedState` → `ProductState`, `PatientState` → `OrderState`, `TransportPriority` → `FulfillmentPriority`, `AdmissionSource` → `SourceChannel`. Added `ShipmentState` (new). `TaskState` and `IntentTag` kept as-is. `TaskType` values changed from EVS_CLEANING/TRANSPORT/BED_PREP to PICK/PACK/QUALITY_CHECK/RESTOCK.
+- **Entities replaced:** `Bed` → `Product` (with warehouse, quantity, reorder fields), `Patient` → `Order` (with nested `OrderItem` model), `Transport` → `Shipment` (with carrier, tracking_number, ShipmentState), `Reservation` → `Allocation` (quantity-based). `Task` retained same shape but uses new `FulfillmentPriority` and `TaskType`. `AgentMessage` unchanged.
+- **Events replaced:** 15 event constants renamed 1:1 from bed-management to supply-chain (e.g., `PATIENT_BED_REQUEST_CREATED` → `ORDER_CREATED`, `BED_RESERVED` → `INVENTORY_ALLOCATED`). `Event` and `StateDiff` models unchanged.
+- **Transitions replaced:** `VALID_BED_TRANSITIONS` → `VALID_PRODUCT_TRANSITIONS`, `VALID_PATIENT_TRANSITIONS` → `VALID_ORDER_TRANSITIONS`, added `VALID_SHIPMENT_TRANSITIONS`. `VALID_TASK_TRANSITIONS` kept as-is. `validate_transition()` updated to detect `OrderState`, `ProductState`, `ShipmentState` in addition to `TaskState`.
+- **Patterns preserved:** `StrEnum` for all enums, Pydantic v2 `BaseModel` with `Field`, `_utcnow` helper, `Optional[str]` for nullable fields, `InvalidTransitionError` with entity_type/current/target.
+- All imports verified clean via `python3 -c "from src.api.app.models import *"`.
+- **Downstream breakage expected:** `state/store.py`, `tools/tool_functions.py`, `tools/tool_schemas.py`, `routers/*.py`, `agents/orchestrator.py`, and all tests reference the old names. They need updating in follow-up work items.
 - **Coordinated rename** across full stack. Goose handled backend: `orchestrator.py` (`_simulate_happy_path` → `_simulate_er_admission`), `scenarios.py` (route + function), `test_endpoints.py` and `test_scenarios.py` (classes, URLs, assertions). Viper updated frontend `ScenarioToolbar.tsx`. Jester updated tests + `smoke_test.sh`. Maverick updated docs, eval scripts, and eval result JSON files. All 391 tests pass.
 
 ### 2026-03-09: WI-030 — Build model comparison evaluation script
@@ -94,3 +102,8 @@
 - Comparison table format: aligned columns with comma-separated numbers; per-agent breakdown printed per model
 - Uses only stdlib — no external dependencies; executable with `#!/usr/bin/env python3`
 - Key file: `scripts/model_eval.py`
+
+### 2026-04-02: Cross-agent note from Scribe (Phase 3 kickoff)
+- **Phase 3 supply chain pivot initiated.** Maverick designed full domain model — see decisions.md DOMAIN-P3-001, DOMAIN-P3-002, PLAN-P3-001.
+- Goose assigned WI-P3-001 through WI-P3-009 (critical path). Viper working TypeScript types + UI (WI-P3-011). Jester has test fixtures ready and waiting for domain code to land.
+- All 10 ADRs unchanged. Architecture stays — only domain nouns change.

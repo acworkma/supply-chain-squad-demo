@@ -66,3 +66,24 @@
 - Architecture held up exactly as designed on day one. No ADR was violated or needed revision. The tool-backed mutation boundary (ADR-003) proved its worth — every state change flows through tool functions, making the system fully auditable.
 - Key file sizes: orchestrator.py (947 lines), tool_functions.py (10 tools), 6 prompt files, full Bicep infra.
 - Decision inbox entry written: `.squad/decisions/inbox/maverick-all-phases-complete.md`
+
+### 2026-04-02 — Phase 3: Supply Chain Domain Pivot Design
+
+**Architecture decisions:**
+- Full domain pivot from bed management → supply chain (distribution/fulfillment center). All 10 ADRs preserved unchanged.
+- 1:1 entity mapping: Patient→Order, Bed→Product, Task→Task, Transport→Shipment, Reservation→Allocation.
+- 1:1 agent mapping: bed-coordinator→supply-coordinator, predictive-capacity→demand-forecaster, bed-allocation→inventory-allocator, evs-tasking→warehouse-ops, transport-ops→logistics-planner, policy-safety→compliance-monitor.
+- 1:1 tool mapping: 10 tools → 10 tools. get_patient→get_order, get_beds→get_products, reserve_bed→allocate_inventory, release_bed_reservation→release_allocation, schedule_transport→schedule_shipment. get_tasks/create_task/update_task/publish_event/escalate names preserved.
+- 3 scenarios: standard-fulfillment (→er-admission), supplier-delay (→disruption-replan), rush-order (→evs-gated). Dropped or-admission and unit-transfer (net simpler).
+- New state machines: OrderState (9 states), ProductState (6 states), ShipmentState (7 states). TaskState unchanged.
+- Config: HOSPITAL_CONFIG→SUPPLY_CHAIN_CONFIG with warehouses (east-dc, west-dc) and zones (Zone-A Electronics, Zone-B General, Zone-C General).
+- Seed data: 16 products across 3 zones, 5 existing orders at various states.
+
+**Key design decision:** Focused on distribution/fulfillment center slice of supply chain. Complex enough for compelling demo, simple enough for clean 1:1 mapping. The "board" visual (BedBoard→InventoryBoard) translates directly — grid of products in color-coded states.
+
+**Work distribution:** 17 WIs across team. Goose carries 9 (critical path: enums→entities→transitions→store→tools→schemas→prompts→orchestrator→scenarios). Viper has 4 (InventoryBoard, OrderQueue, ShipmentTracker, wiring). Iceman has 2 (build_agents, smoke test/docs). Jester has 2 (backend tests, frontend tests).
+
+**Deliverables written:**
+- `.squad/decisions/inbox/maverick-supply-chain-domain-model.md` — full domain model with entities, enums, events, transitions, tools, seed data, and 3 scenarios
+- `.squad/decisions/inbox/maverick-supply-chain-agent-roster.md` — 6 agents with roles, tools, prompts, interaction flows
+- `.squad/decisions/inbox/maverick-phase3-work-items.md` — 17 WIs with owners, dependencies, and critical path
