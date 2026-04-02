@@ -98,6 +98,17 @@
 - Created `scripts/model_eval.py`: stdlib-only CLI (argparse, json, urllib.request, time, glob, statistics) for running scenarios and comparing results across models
 - Two modes: **run mode** (`--model gpt-5.2 --runs 3`) seeds state, triggers scenario, polls `/api/metrics/history` for new entries, collects per-agent metrics across N runs; **compare mode** (`--compare eval-results-*.json`) reads multiple result files and prints summary + per-agent breakdown tables
 - Polling logic: records pre-trigger history length, polls with exponential backoff (2s→5s cap) until a new entry appears or 300s timeout
+
+### 2026-04-02: WI-C-001 through WI-C-004 — Supply Closet Replenishment Domain Model (Foundation Layer)
+- Second full domain pivot: supply-chain fulfillment center → hospital supply closet replenishment
+- Rewrote 5 files in `src/api/app/models/`: `enums.py`, `entities.py`, `events.py`, `transitions.py`, `__init__.py`
+- **Enums:** Removed OrderState, ProductState, TaskType, FulfillmentPriority, SourceChannel. Kept TaskState, IntentTag. Rewrote ShipmentState (simplified 5-state: CREATED→SHIPPED→IN_TRANSIT→DELIVERED, with DELAYED). Added 7 new enums: ItemCategory, ItemCriticality, ContractTier, POState, POApprovalStatus, ScanState, VendorStockStatus.
+- **Entities:** Removed Order, OrderItem, Product, Task, Shipment (old), Allocation. Added SupplyCloset, SupplyItem, Vendor, CatalogEntry, PurchaseOrder, POLineItem, ScanResult, ReorderItem, Shipment (simplified). Kept AgentMessage unchanged.
+- **Events:** Replaced 15 supply-chain events with 17 closet workflow events across 5 categories: scan lifecycle (3), sourcing (3), purchase orders (7), fulfillment (3), escalation (1). Kept StateDiff and Event models unchanged.
+- **Transitions:** Removed VALID_ORDER_TRANSITIONS, VALID_PRODUCT_TRANSITIONS. Added VALID_SCAN_TRANSITIONS (7-state), VALID_PO_TRANSITIONS (8-state). Rewrote VALID_SHIPMENT_TRANSITIONS (5-state). Kept VALID_TASK_TRANSITIONS. Updated validate_transition() to handle ScanState and POState.
+- **Patterns preserved:** StrEnum for all enums, Pydantic v2 BaseModel with Field, _utcnow() helper, Optional[str] for nullable fields, InvalidTransitionError with entity_type/current/target.
+- All imports verified clean via `python3 -c "from src.api.app.models import *"`.
+- **Downstream breakage expected:** state/store.py, tools/*, routers/*, agents/orchestrator.py, and all tests reference old names. Follow-up work items needed.
 - JSON output format: `model`, `scenario`, `runs`, `timestamp`, `summary` (avg latency/tokens/rounds), `per_agent` (per-agent averages), `raw_runs` (full metrics from each run)
 - Comparison table format: aligned columns with comma-separated numbers; per-agent breakdown printed per model
 - Uses only stdlib — no external dependencies; executable with `#!/usr/bin/env python3`
