@@ -1,4 +1,4 @@
-"""Supply Chain Management API — FastAPI application."""
+"""Patient Flow / Bed Management API — FastAPI application."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -7,17 +7,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import config, events, messages, metrics
+from app.routers import config, events, messages, metrics, scenarios, state
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown hooks."""
+    from app.state import store
+
+    store.seed_initial_state()
     yield
 
 
 app = FastAPI(
-    title="Supply Chain Management API",
+    title="Patient Flow / Bed Management API",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -31,9 +34,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API routers — generic endpoints available now; domain routers added later
+# API routers
+app.include_router(state.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
+app.include_router(scenarios.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")
 app.include_router(config.router, prefix="/api")
 

@@ -1,7 +1,7 @@
 import type { SquadConfig } from '@bradygaster/squad';
 
 /**
- * Squad Configuration for supply-chain-squad-demo
+ * Squad Configuration for bed-management-squad-demo
  * 
  */
 const config: SquadConfig = {
@@ -21,6 +21,54 @@ const config: SquadConfig = {
       enabled: false,
       model: 'claude-haiku-4.5',
       maxRetriesBeforeNuclear: 3
+    }
+  },
+  
+  routing: {
+    rules: [
+      {
+        workType: 'feature-dev',
+        agents: ['@scribe'],
+        confidence: 'high'
+      },
+      {
+        workType: 'bug-fix',
+        agents: ['@scribe'],
+        confidence: 'high'
+      },
+      {
+        workType: 'testing',
+        agents: ['@scribe'],
+        confidence: 'high'
+      },
+      {
+        workType: 'documentation',
+        agents: ['@scribe'],
+        confidence: 'high'
+      }
+    ],
+    governance: {
+      eagerByDefault: true,
+      scribeAutoRuns: false,
+      allowRecursiveSpawn: false
+    }
+  },
+  
+  casting: {
+    allowlistUniverses: [
+      'The Usual Suspects',
+      'Breaking Bad',
+      'The Wire',
+      'Firefly'
+    ],
+    overflowStrategy: 'generic',
+    universeCapacity: {}
+  },
+  
+  platforms: {
+    vscode: {
+      disableModelSelection: false,
+      scribeMode: 'sync'
     }
   }
 };

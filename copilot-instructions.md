@@ -1,69 +1,46 @@
-# Supply Chain Management — Agentic AI Demo
+# Copilot Coding Agent — Squad Instructions
 
-## Copilot Instructions
+You are working on a project that uses **Squad**, an AI team framework. When picking up issues autonomously, follow these guidelines.
 
-This project demonstrates multi-agent AI orchestration for supply chain management using Azure AI Foundry.
+## Team Context
 
-### Architecture
+Before starting work on any issue:
 
-- **Backend:** Python/FastAPI (`src/api/`) — domain model, agent orchestration, event sourcing
-- **Frontend:** React/TypeScript/Tailwind (`src/ui/`) — dark-mode "command center" UI with real-time SSE updates
-- **Infrastructure:** Azure Container Apps + Azure AI Foundry (`infra/`) — Bicep templates, managed identity, keyless auth
-- **Agents:** Azure AI Foundry agents with tool-calling — supervisor orchestration pattern
+1. Read `.squad/team.md` for the team roster, member roles, and your capability profile.
+2. Read `.squad/routing.md` for work routing rules.
+3. If the issue has a `squad:{member}` label, read that member's charter at `.squad/agents/{member}/charter.md` to understand their domain expertise and coding style — work in their voice.
 
-### Key Architectural Invariants
+## Capability Self-Check
 
-1. **Tool-backed state mutation:** Agent tool functions are the single mutation boundary. Each tool validates, transitions state, emits an event. No direct state mutation.
-2. **Supervisor orchestration:** Supply Chain Coordinator routes to specialist agents. No peer-to-peer agent communication.
-3. **Event sourcing lite:** Append-only event store with sequence numbers. State materialized alongside events.
-4. **In-memory state:** No database. State resets on container restart. Acceptable for demo scope.
-5. **Single container:** React built to static files, served by FastAPI. One ACA container, one ingress.
+Before starting work, check your capability profile in `.squad/team.md` under the **Coding Agent → Capabilities** section.
 
-### File Layout
+- **🟢 Good fit** — proceed autonomously.
+- **🟡 Needs review** — proceed, but note in the PR description that a squad member should review.
+- **🔴 Not suitable** — do NOT start work. Instead, comment on the issue:
+  ```
+  🤖 This issue doesn't match my capability profile (reason: {why}). Suggesting reassignment to a squad member.
+  ```
 
+## Branch Naming
+
+Use the squad branch convention:
 ```
-src/api/app/
-  agents/         — orchestrator + prompts
-  events/         — append-only event store
-  messages/       — agent conversation store
-  metrics/        — scenario run metrics
-  models/         — domain entities, enums, state machines
-  routers/        — FastAPI endpoints
-  state/          — in-memory state store
-  tools/          — agent tool functions + schemas
-  config.py       — Pydantic settings
-  config_store.py — runtime config overlay
-  main.py         — FastAPI app
-
-src/ui/src/
-  components/     — React components (layout, dashboard, conversation, timeline)
-  hooks/          — useApi, useSSE
-  lib/            — utilities, color mappings
-  types/          — TypeScript interfaces
-
-infra/
-  main.bicep       — orchestration
-  modules/
-    aca.bicep        — Container Apps + ACR + identity
-    foundry.bicep    — AI Services + model deployments + project
-    observability.bicep — Log Analytics + App Insights
+squad/{issue-number}-{kebab-case-slug}
 ```
+Example: `squad/42-fix-login-validation`
 
-### Testing
+## PR Guidelines
 
-- **Backend:** `cd src/api && pytest` (asyncio mode auto, httpx test client)
-- **Frontend:** `cd src/ui && npm test` (Vitest + Testing Library)
-- **Smoke:** `scripts/smoke_test.sh` (curl-based endpoint verification)
+When opening a PR:
+- Reference the issue: `Closes #{issue-number}`
+- If the issue had a `squad:{member}` label, mention the member: `Working as {member} ({role})`
+- If this is a 🟡 needs-review task, add to the PR description: `⚠️ This task was flagged as "needs review" — please have a squad member review before merging.`
+- Follow any project conventions in `.squad/decisions.md`
 
-### Local Development
+## Decisions
 
-```bash
-# Backend
-cd src/api && pip install -e '.[dev]' && uvicorn app.main:app --reload
-
-# Frontend
-cd src/ui && npm install && npm run dev
-
-# Deploy to Azure
-azd up
+If you make a decision that affects other team members, write it to:
 ```
+.squad/decisions/inbox/copilot-{brief-slug}.md
+```
+The Scribe will merge it into the shared decisions file.

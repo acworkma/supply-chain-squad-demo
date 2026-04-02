@@ -1,0 +1,767 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "9028017409594137955"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "metadata": {
+        "description": "Name of the Azure Developer CLI environment"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Primary location for all resources"
+      }
+    },
+    "modelName": {
+      "type": "string",
+      "defaultValue": "gpt-5.2",
+      "metadata": {
+        "description": "Name of the AI model to deploy"
+      }
+    },
+    "modelDeployments": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "name": "gpt-5.2",
+          "version": "2025-12-11",
+          "capacity": 100
+        }
+      ],
+      "metadata": {
+        "description": "Array of model deployments: each object has name (string), version (string), capacity (int)"
+      }
+    }
+  },
+  "variables": {
+    "resourceToken": "[uniqueString(resourceGroup().id)]",
+    "tags": {
+      "environment": "[parameters('environmentName')]",
+      "project": "bed-management-demo"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('observability-{0}', variables('resourceToken'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "resourceToken": {
+            "value": "[variables('resourceToken')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "13904107900344819951"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Prefix used when generating resource names"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "resourceToken": {
+              "type": "string",
+              "metadata": {
+                "description": "Unique token for resource name generation"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to all resources"
+              }
+            }
+          },
+          "variables": {
+            "logAnalyticsName": "[format('la-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]",
+            "appInsightsName": "[format('in-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[variables('logAnalyticsName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[variables('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Log Analytics Workspace"
+              },
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Connection string for Application Insights"
+              },
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            "appInsightsInstrumentationKey": {
+              "type": "string",
+              "metadata": {
+                "description": "Instrumentation key for Application Insights"
+              },
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').InstrumentationKey]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('foundry-{0}', variables('resourceToken'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "resourceToken": {
+            "value": "[variables('resourceToken')]"
+          },
+          "modelDeployments": {
+            "value": "[parameters('modelDeployments')]"
+          },
+          "primaryModelName": {
+            "value": "[parameters('modelName')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('observability-{0}', variables('resourceToken'))), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "10357127675568866854"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Prefix used when generating resource names"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "resourceToken": {
+              "type": "string",
+              "metadata": {
+                "description": "Unique token for resource name generation"
+              }
+            },
+            "modelDeployments": {
+              "type": "array",
+              "metadata": {
+                "description": "Array of model deployments. Each object must have: name (string), version (string), capacity (int). The deployment name will match the model name."
+              }
+            },
+            "primaryModelName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the primary model deployment (used as MODEL_DEPLOYMENT_NAME in app config)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to all resources"
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of Log Analytics Workspace for diagnostics"
+              }
+            }
+          },
+          "variables": {
+            "aiServicesName": "[format('aif-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]",
+            "aiProjectName": "[format('proj-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-06-01",
+              "name": "[variables('aiServicesName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "AIServices",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "sku": {
+                "name": "S0"
+              },
+              "properties": {
+                "customSubDomainName": "[variables('aiServicesName')]",
+                "publicNetworkAccess": "Enabled",
+                "disableLocalAuth": false,
+                "allowProjectManagement": true
+              }
+            },
+            {
+              "copy": {
+                "name": "modelDeploy",
+                "count": "[length(parameters('modelDeployments'))]",
+                "mode": "serial",
+                "batchSize": 1
+              },
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('aiServicesName'), parameters('modelDeployments')[copyIndex()].name)]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": "[parameters('modelDeployments')[copyIndex()].capacity]"
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[parameters('modelDeployments')[copyIndex()].name]",
+                  "version": "[parameters('modelDeployments')[copyIndex()].version]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiServicesName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', variables('aiServicesName'), variables('aiProjectName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {},
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiServicesName'))]",
+                "modelDeploy"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "apiVersion": "2021-05-01-preview",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiServicesName'))]",
+              "name": "[format('{0}-diag', variables('aiServicesName'))]",
+              "properties": {
+                "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+                "logs": [
+                  {
+                    "categoryGroup": "allLogs",
+                    "enabled": true
+                  }
+                ],
+                "metrics": [
+                  {
+                    "category": "AllMetrics",
+                    "enabled": true
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiServicesName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "projectEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Project endpoint for the AI Foundry SDK v2"
+              },
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts/projects', variables('aiServicesName'), variables('aiProjectName')), '2025-06-01').endpoints['AI Foundry API']]"
+            },
+            "aiServicesEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Endpoint of the AI Services account"
+              },
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', variables('aiServicesName')), '2025-06-01').endpoint]"
+            },
+            "modelDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the primary model deployment (for app config)"
+              },
+              "value": "[parameters('primaryModelName')]"
+            },
+            "allModelDeploymentNames": {
+              "type": "array",
+              "metadata": {
+                "description": "Names of all model deployments"
+              },
+              "copy": {
+                "count": "[length(parameters('modelDeployments'))]",
+                "input": "[parameters('modelDeployments')[copyIndex()].name]"
+              }
+            },
+            "aiServicesId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the AI Services account (for RBAC)"
+              },
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts', variables('aiServicesName'))]"
+            },
+            "projectConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Connection string for AIProjectClient"
+              },
+              "value": "[format('{0}.services.ai.azure.com;{1};{2};{3}', variables('aiServicesName'), subscription().subscriptionId, resourceGroup().name, variables('aiProjectName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('observability-{0}', variables('resourceToken')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('aca-{0}', variables('resourceToken'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[parameters('environmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "resourceToken": {
+            "value": "[variables('resourceToken')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('observability-{0}', variables('resourceToken'))), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          },
+          "appInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('observability-{0}', variables('resourceToken'))), '2025-04-01').outputs.appInsightsConnectionString.value]"
+          },
+          "foundryProjectEndpoint": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.projectEndpoint.value]"
+          },
+          "aiServicesId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.aiServicesId.value]"
+          },
+          "modelDeploymentName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.modelDeploymentName.value]"
+          },
+          "projectConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.projectConnectionString.value]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "18294688911948456659"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Prefix used when generating resource names"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for all resources"
+              }
+            },
+            "resourceToken": {
+              "type": "string",
+              "metadata": {
+                "description": "Unique token for resource name generation"
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the Log Analytics Workspace"
+              }
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights connection string"
+              }
+            },
+            "foundryProjectEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "AI Foundry project endpoint"
+              }
+            },
+            "aiServicesId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource ID of the AI Services account for RBAC assignment"
+              }
+            },
+            "modelDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the deployed AI model"
+              }
+            },
+            "projectConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Project connection string for AI Foundry SDK"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to all resources"
+              }
+            }
+          },
+          "variables": {
+            "acrName": "[replace(format('cr{0}{1}', parameters('namePrefix'), parameters('resourceToken')), '-', '')]",
+            "acaEnvName": "[format('ae-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]",
+            "acaAppName": "[format('ca-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]",
+            "uamiName": "[format('id-{0}-{1}', parameters('namePrefix'), parameters('resourceToken'))]",
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+            "cognitiveServicesUserRoleId": "a97b65f3-24c7-4388-baec-2e87135dc908"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[variables('uamiName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-11-01-preview",
+              "name": "[variables('acrName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Basic"
+              },
+              "properties": {
+                "adminUserEnabled": false
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', variables('acrName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), variables('acrPullRoleId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerRegistry/registries', variables('acrName'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', last(split(parameters('aiServicesId'), '/')))]",
+              "name": "[guid(parameters('aiServicesId'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), variables('cognitiveServicesUserRoleId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesUserRoleId'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[variables('acaEnvName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(parameters('logAnalyticsWorkspaceId'), '2023-09-01').customerId]",
+                    "sharedKey": "[listKeys(parameters('logAnalyticsWorkspaceId'), '2023-09-01').primarySharedKey]"
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[variables('acaAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('azd-service-name', 'api'))]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('acaEnvName'))]",
+                "configuration": {
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8000,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "registries": [
+                    {
+                      "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-11-01-preview').loginServer]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName'))]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "bed-management-api",
+                      "image": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "PROJECT_ENDPOINT",
+                          "value": "[parameters('foundryProjectEndpoint')]"
+                        },
+                        {
+                          "name": "MODEL_DEPLOYMENT_NAME",
+                          "value": "[parameters('modelDeploymentName')]"
+                        },
+                        {
+                          "name": "PROJECT_CONNECTION_STRING",
+                          "value": "[parameters('projectConnectionString')]"
+                        },
+                        {
+                          "name": "APP_THEME",
+                          "value": "dark"
+                        },
+                        {
+                          "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                          "value": "[parameters('appInsightsConnectionString')]"
+                        },
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), '2023-01-31').clientId]"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 1
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', variables('acaEnvName'))]",
+                "[resourceId('Microsoft.ContainerRegistry/registries', variables('acrName'))]",
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), variables('acrPullRoleId')))]",
+                "[extensionResourceId(resourceId('Microsoft.CognitiveServices/accounts', last(split(parameters('aiServicesId'), '/'))), 'Microsoft.Authorization/roleAssignments', guid(parameters('aiServicesId'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), variables('cognitiveServicesUserRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "appUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "FQDN URL of the deployed Container App"
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('acaAppName')), '2024-03-01').configuration.ingress.fqdn)]"
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "metadata": {
+                "description": "ACR login server hostname"
+              },
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2023-11-01-preview').loginServer]"
+            },
+            "appName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the deployed Container App"
+              },
+              "value": "[variables('acaAppName')]"
+            },
+            "managedIdentityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal ID of the managed identity"
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('uamiName')), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('observability-{0}', variables('resourceToken')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "acaEndpointUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "The URL of the deployed Container App"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('aca-{0}', variables('resourceToken'))), '2025-04-01').outputs.appUrl.value]"
+    },
+    "acrLoginServer": {
+      "type": "string",
+      "metadata": {
+        "description": "The ACR login server hostname"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('aca-{0}', variables('resourceToken'))), '2025-04-01').outputs.acrLoginServer.value]"
+    },
+    "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
+      "type": "string",
+      "metadata": {
+        "description": "ACR endpoint for azd container image push"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('aca-{0}', variables('resourceToken'))), '2025-04-01').outputs.acrLoginServer.value]"
+    },
+    "PROJECT_ENDPOINT": {
+      "type": "string",
+      "metadata": {
+        "description": "The AI Foundry project endpoint (agents endpoint for SDK v2)"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.projectEndpoint.value]"
+    },
+    "MODEL_DEPLOYMENT_NAME": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the deployed AI model"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.modelDeploymentName.value]"
+    },
+    "ALL_MODEL_DEPLOYMENT_NAMES": {
+      "type": "array",
+      "metadata": {
+        "description": "All deployed model names (for eval harness / multi-model comparison)"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.allModelDeploymentNames.value]"
+    },
+    "PROJECT_CONNECTION_STRING": {
+      "type": "string",
+      "metadata": {
+        "description": "Project connection string for build_agents.py post-provision hook"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('foundry-{0}', variables('resourceToken'))), '2025-04-01').outputs.projectConnectionString.value]"
+    },
+    "appName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the deployed Container App"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('aca-{0}', variables('resourceToken'))), '2025-04-01').outputs.appName.value]"
+    }
+  }
+}

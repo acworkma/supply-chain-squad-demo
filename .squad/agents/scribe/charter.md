@@ -12,7 +12,7 @@
 ## Project Context
 
 - **Owner:** acworkma
-- **Project:** Supply Chain Management — Agentic AI Demo (Azure + Foundry + ACA)
+- **Project:** Patient Flow / Bed Management — Agentic AI Demo (Azure + Foundry + ACA)
 - **Stack:** Python/FastAPI, React/Tailwind/shadcn/ui, Azure Container Apps, Azure AI Foundry, Bicep/azd
 
 ## What I Own

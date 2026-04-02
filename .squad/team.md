@@ -1,6 +1,6 @@
 # Squad Team
 
-> Supply Chain Management — Agentic AI Demo (Azure + Foundry + ACA)
+> Patient Flow / Bed Management — Agentic AI Demo (Azure + Foundry + ACA)
 
 ## Coordinator
 
@@ -44,14 +44,14 @@
 
 ## Issue Source
 
-- **Repository:** acworkma/supply-chain-squad-demo
-- **Connected:** 2026-04-01
+- **Repository:** acworkma/bed-management-squad-demo
+- **Connected:** 2026-03-07
 - **Filters:** all open issues
 
 ## Project Context
 
 - **Owner:** acworkma
-- **Project:** Supply Chain Management — Agentic AI Demo
+- **Project:** Patient Flow / Bed Management — Agentic AI Demo
 - **Stack:** Python/FastAPI, React/Tailwind/shadcn/ui, Azure Container Apps, Azure AI Foundry, Bicep/azd
 - **Universe:** Top Gun (aviation)
-- **Created:** 2026-04-01
+- **Created:** 2026-03-07

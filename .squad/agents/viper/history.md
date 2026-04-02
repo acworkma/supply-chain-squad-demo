@@ -1,10 +1,66 @@
-# Viper — History
+# Project Context
 
-## Project Context
-- **Project:** Supply Chain Management — Agentic AI Demo
 - **Owner:** acworkma
-- **Stack:** Python/FastAPI, React/Tailwind/shadcn/ui, Azure Container Apps, Azure AI Foundry, Bicep/azd
-- **Created:** 2026-04-01
-- **Scaffolded from:** bed-management-squad-demo
+- **Project:** Patient Flow / Bed Management — Agentic AI Demo (Azure + Foundry + ACA)
+- **Stack:** Python/FastAPI backend, React/Tailwind/shadcn frontend, Azure Container Apps, Azure AI Foundry, Bicep/azd infra
+- **Created:** 2026-03-07
 
 ## Learnings
+
+<!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+### 2026-03-07: WI-005 — UI Shell Created
+
+- **UI lives in `src/ui/`** — fully self-contained Vite + React + Tailwind + TypeScript project
+- **Three-pane layout** via CSS Grid: left 55% (Ops Dashboard with stacked Patient Queue / Bed Board / Transport Queue), right 45% split vertically into Agent Conversation (55%) and Event Timeline (45%)
+- **Color tokens** defined in `tailwind.config.ts` under `tower-*` namespace: bg, surface, border, accent (teal #06b6d4), warning (amber), success (green), error (red)
+- **Component structure**: `components/layout/` (ControlTower, PaneHeader), `components/dashboard/` (PatientQueue, BedBoard, TransportQueue), `components/conversation/` (AgentConversation), `components/timeline/` (EventTimeline)
+- **PaneHeader** is reusable: takes LucideIcon, title, optional badge with color variant. Includes subtle accent gradient bar at top.
+- **`cn()` utility** in `src/lib/utils.ts` — standard clsx + tailwind-merge pattern for conditional class merging
+- **Vite proxy**: `/api` → `http://localhost:8000` configured for dev — aligns with ADR-005 (single container in prod, split dev servers)
+- **Path alias**: `@/*` → `./src/*` set in both tsconfig.app.json and vite.config.ts
+- **Dark mode only** — `class="dark"` on `<html>`, custom scrollbar styles, `color-scheme: dark`
+- Build verified clean, dev server confirmed serving on :5173
+
+### 2026-03-07: WI-010/011/012 — Phase 2 Frontend — Real Data Panes
+
+- **New shared infra created**: `types/api.ts` (all TS interfaces/unions mirroring backend Pydantic models), `lib/colors.ts` (color mapping functions for every state enum), `hooks/useApi.ts` (polls /api/state every 2s), `hooks/useSSE.ts` (generic SSE hook with auto-reconnect)
+- **ControlTower** now owns data: calls `useApi()` + `useSSE()`, passes typed props to all child components. PaneHeader badges show live counts.
+- **PatientQueue** — sortable table (acuity-first, then wait time). Color-coded state badges, monospace MRN/wait/acuity. Handles loading/error/empty states.
+- **BedBoard** — compact grid grouped by unit. Each card shows room+bed letter, state dot + label, patient name or reserved indicator. Ring highlight for reservations.
+- **TransportQueue** — row list with priority badge, patient→destination route, state, scheduled time.
+- **AgentConversation** — chat transcript with per-agent avatar colors (keyword-matched: flow=blue, predictive=purple, bed=green, evs=amber, transport=cyan, policy=red). Intent tag badges, related event ID chips, auto-scroll.
+- **EventTimeline** — append-only log with expand-to-reveal payload JSON + state diff (from→to). Event type color-coded by domain. Monospace sequence/timestamp. Auto-scroll.
+- **Design discipline**: zero new dependencies installed. All styling via Tailwind utility classes + tower-* tokens. Transition-colors on hover/state changes. Monospace for data fields.
+- Build verified clean (tsc --noEmit + vite build).
+
+### 2026-03-07: WI-017 — Frontend ↔ API Integration (SSE + Scenario Triggers)
+
+- **`useSSE` hook enhanced** — now returns `{ items: T[], connected: boolean }` instead of plain `T[]`. Tracks `onopen` for connected state, `onerror` for disconnected. All consumers updated to destructure.
+- **`ScenarioToolbar` component created** at `components/layout/ScenarioToolbar.tsx` — contains scenario trigger buttons (Happy Path, Disruption + Replan, Reset), scenario running status with ping animation, and connection status indicator.
+- **Scenario trigger pattern**: POST to `/api/scenario/*`, disable all buttons while triggering, 30s auto-clear on running status. Reset clears scenario status immediately.
+- **Connection status**: OR of both SSE streams (events + messages). Green dot = Connected, red dot = Disconnected. Uses `Radio` icon from lucide-react.
+- **ControlTower layout changed** — outer div is now `flex flex-col` with toolbar in a fixed top row and the grid panes in `flex-1`. No height changes to pane layout.
+- **Design consistency**: All new elements use tower-* tokens, dark-mode-only, subtle border/accent hover transitions, monospace-free for button labels, `cn()` utility for conditional classes.
+
+### 2026-03-27: Cross-team rename — Happy Path → ER Admission
+- Updated `ScenarioToolbar.tsx`: button label `Happy Path` → `ER Admission`, endpoint `/api/scenario/happy-path` → `/api/scenario/er-admission`. Coordinated with Goose (backend), Jester (tests), Maverick (docs).
+
+### 2026-03-09: Collapsible Agent Messages in AgentConversation
+
+### 2026-03-27: Agent Directory Panel — Collapsible 3rd Column
+- **New component**: `components/dashboard/AgentDirectory.tsx` — renders a collapsible panel in the Control Tower's 3rd grid column.
+- **Two modes**: collapsed (40px vertical strip with Bot icon + "AGENTS" vertical text) and expanded (280px panel with agent cards).
+- **Grid transition**: `transition-[grid-template-columns] duration-300 ease-in-out` on the main grid — columns smoothly resize between `[55fr_45fr_40px]` and `[50fr_40fr_280px]`.
+- **Active agent detection**: derives from last message in SSE stream, highlights matching card with agent-color border/glow/bg.
+- **Left accent bar pattern**: each card has a `w-1 rounded-full` bar using the agent's hex color, full opacity when active, 30% when inactive. Used a `getAccentHex()` helper to map Tailwind text-color classes to hex values for inline styles.
+- **Custom header**: reproduced PaneHeader styling inline (accent gradient bar + icon + title) to add a collapse ChevronRight button without modifying the shared PaneHeader component interface.
+- **Responsive**: hidden below `lg` breakpoint via `hidden lg:flex` wrapper div.
+- **Zero new dependencies** — Bot, ChevronLeft, ChevronRight already in lucide-react.
+
+- **Collapsible long messages**: Messages >120 chars or containing `\n` start collapsed, showing only the first sentence as a summary with a `ChevronRight` toggle icon.
+- **Animation technique**: Uses CSS `grid-template-rows: 0fr → 1fr` with `transition-[grid-template-rows]` for smooth expand/collapse — cleaner than max-height hacks, no JS measurement needed.
+- **State management**: Parent `AgentConversation` holds a `Set<string>` of expanded message IDs. Toggle is passed down via `onToggle` callback. Short messages render with no toggle, unchanged.
+- **Extracted `MessageBubble` sub-component**: Keeps the map body clean. Receives `msg`, `expanded`, `onToggle` props.
+- **Summary extraction**: `summarize()` finds the first `.` or `\n` boundary; falls back to full content for short messages.
+- **Zero new dependencies** — `ChevronRight` already in lucide-react, all styling via Tailwind utilities + tower-* tokens.

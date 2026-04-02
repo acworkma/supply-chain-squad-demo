@@ -1,7 +1,5 @@
-import { CommandCenter } from "./components/layout/CommandCenter";
+import { ControlTower } from "@/components/layout/ControlTower";
 
-function App() {
-  return <CommandCenter />;
+export default function App() {
+  return <ControlTower />;
 }
-
-export default App;

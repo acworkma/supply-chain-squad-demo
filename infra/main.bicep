@@ -17,7 +17,7 @@ param modelDeployments array = [
 var resourceToken = uniqueString(resourceGroup().id)
 var tags = {
   environment: environmentName
-  project: 'supply-chain-demo'
+  project: 'bed-management-demo'
 }
 
 // --- Observability ---

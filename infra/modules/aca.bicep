@@ -71,6 +71,8 @@ resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 }
 
 // --- RBAC: Cognitive Services User for the managed identity ---
+// Uses Microsoft.CognitiveServices/* wildcard which covers OpenAI,
+// AIServices/agents/write, and all Foundry data actions.
 resource cognitiveServicesRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(aiServicesId, uami.id, cognitiveServicesUserRoleId)
   scope: aiServicesResource
@@ -132,7 +134,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     template: {
       containers: [
         {
-          name: 'supply-chain-api'
+          name: 'bed-management-api'
           image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           resources: {
             cpu: json('0.5')

@@ -1,6 +1,6 @@
-name: supply-chain-demo
+name: bed-management-demo
 metadata:
-  template: supply-chain-squad-demo
+  template: bed-management-squad-demo
 services:
   api:
     project: ./src/api

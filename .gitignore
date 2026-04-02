@@ -1,35 +1,63 @@
-# Python
+# === Python ===
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-.eggs/
 *.egg
+dist/
+build/
+.eggs/
+*.whl
 .venv/
 venv/
 env/
-dist/
-build/
+.env
+.env.local
+.env.*.local
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Node
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# === Node / React ===
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# === Frontend build ===
 src/ui/dist/
+src/ui/build/
+.next/
+.turbo/
 
-# Azure
+# === Azure / azd ===
 .azure/
+.azure-pipelines/
+azd-env/
 
-# IDE
-.vscode/
+# === Docker ===
+*.tar
+docker-compose.override.yml
+
+# === IDE / Editor ===
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
+# === Squad: generated logs ===
+.squad/orchestration-log/
+.squad/log/
