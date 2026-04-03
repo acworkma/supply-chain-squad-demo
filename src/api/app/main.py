@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import config, events, messages, metrics, scenarios, state
+from app.routers import approval, config, events, messages, metrics, scenarios, state
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ app.include_router(messages.router, prefix="/api")
 app.include_router(scenarios.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")
 app.include_router(config.router, prefix="/api")
+app.include_router(approval.router, prefix="/api")
 
 
 @app.get("/health")
@@ -51,4 +52,5 @@ async def health():
 # Serve static UI build in production (if the directory exists)
 static_dir = Path(__file__).parent.parent / "static"
 if static_dir.is_dir():
-    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+    app.mount("/", StaticFiles(directory=str(static_dir),
+              html=True), name="static")

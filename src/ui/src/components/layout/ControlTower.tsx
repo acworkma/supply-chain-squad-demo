@@ -8,11 +8,12 @@ import { AgentNetwork } from "@/components/dashboard/AgentNetwork";
 import { AgentDirectory } from "@/components/dashboard/AgentDirectory";
 import { AgentConversation } from "@/components/conversation/AgentConversation";
 import { EventTimeline } from "@/components/timeline/EventTimeline";
+import { ApprovalModal } from "@/components/approval/ApprovalModal";
 import { useApi } from "@/hooks/useApi";
 import { useSSE } from "@/hooks/useSSE";
 import { cn } from "@/lib/utils";
-import type { Event, AgentMessage } from "@/types/api";
-import { useCallback, useState } from "react";
+import type { Event, AgentMessage, PurchaseOrder } from "@/types/api";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function ControlTower() {
   const { supplyItems, purchaseOrders, shipments, closets, loading, error } = useApi();
@@ -22,9 +23,35 @@ export function ControlTower() {
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const toggleAgentPanel = useCallback(() => setAgentPanelOpen(prev => !prev), []);
 
+  // ── Human-in-the-loop approval state ──
+  const [pendingPO, setPendingPO] = useState<PurchaseOrder | null>(null);
+  const lastHandledSeq = useRef(0);
+
+  // Watch SSE events for POPendingHumanApproval
+  useEffect(() => {
+    for (const evt of events) {
+      if (evt.sequence <= lastHandledSeq.current) continue;
+      if (evt.event_type === "POPendingHumanApproval") {
+        lastHandledSeq.current = evt.sequence;
+        const poId = (evt.payload as Record<string, unknown>).po_id as string;
+        // Fetch fresh PO data so modal has line items
+        fetch("/api/state")
+          .then((r) => r.json())
+          .then((state) => {
+            const po = state.purchase_orders?.[poId];
+            if (po) setPendingPO(po);
+          })
+          .catch(() => {});
+      }
+    }
+  }, [events]);
+
+  const handleApprovalClose = useCallback(() => setPendingPO(null), []);
+
   const handleReset = useCallback(() => {
     clearEvents();
     clearMessages();
+    lastHandledSeq.current = 0;
   }, [clearEvents, clearMessages]);
 
   const itemList = Object.values(supplyItems);
@@ -102,6 +129,11 @@ export function ControlTower() {
           <AgentNetwork messages={messages} />
         </div>
       </section>
+
+      {/* ── Human-in-the-loop Approval Modal ── */}
+      {pendingPO && (
+        <ApprovalModal po={pendingPO} onClose={handleApprovalClose} />
+      )}
     </div>
   );
 }

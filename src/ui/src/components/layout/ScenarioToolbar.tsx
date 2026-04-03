@@ -26,15 +26,15 @@ interface ScenarioGroup {
 
 const SCENARIO_GROUPS: ScenarioGroup[] = [
   {
-    category: "Supply Management",
+    category: "ICO",
     items: [
       { label: "Routine Restock", endpoint: "/api/scenario/routine-restock", hoverColor: "hover:text-tower-accent" },
     ],
   },
   {
-    category: "Emergencies",
+    category: "OR",
     items: [
-      { label: "Critical Shortage", endpoint: "/api/scenario/critical-shortage", hoverColor: "hover:text-tower-warning" },
+      { label: "PO Approval", endpoint: "/api/scenario/critical-shortage", hoverColor: "hover:text-tower-warning" },
     ],
   },
 ];
@@ -62,6 +62,8 @@ export function ScenarioToolbar({ eventsConnected, messagesConnected, onReset }:
     setMenuOpen(false);
     setTriggering(true);
     setScenario({ name, running: true });
+    // Clear stale events/messages so the approval modal can detect new ones
+    onReset?.();
     try {
       const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -72,7 +74,7 @@ export function ScenarioToolbar({ eventsConnected, messagesConnected, onReset }:
     } finally {
       setTriggering(false);
     }
-  }, []);
+  }, [onReset]);
 
   const handleReset = useCallback(async () => {
     setTriggering(true);

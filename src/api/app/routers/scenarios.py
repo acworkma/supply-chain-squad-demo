@@ -6,6 +6,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import JSONResponse
 
+from app import approval_signal
 from app.agents.orchestrator import run_scenario
 from app.events import event_store
 from app.messages import message_store
@@ -21,8 +22,23 @@ router = APIRouter(tags=["scenarios"])
 _scenario_lock = asyncio.Lock()
 
 
+async def _wait_for_lock_release(timeout: float = 3.0) -> bool:
+    """After signaling an in-flight task, wait briefly for the lock to release."""
+    if not _scenario_lock.locked():
+        return True
+    interval = 0.1
+    waited = 0.0
+    while waited < timeout:
+        await asyncio.sleep(interval)
+        if not _scenario_lock.locked():
+            return True
+        waited += interval
+    return False
+
+
 def _reset_and_seed() -> None:
     """Clear all stores and re-seed the initial closet state."""
+    approval_signal.signal()  # wake any in-flight approval wait
     store.clear()
     store.seed_initial_state()
     event_store.clear()
@@ -39,10 +55,9 @@ async def run_routine_restock(background_tasks: BackgroundTasks):
     Clears state, seeds initial conditions, publishes a scan-initiated event,
     and kicks off orchestration in the background.  Returns 202 immediately.
     """
-    if _scenario_lock.locked():
-        return JSONResponse(status_code=409, content={"error": "scenario already running"})
-
     _reset_and_seed()
+    if not await _wait_for_lock_release():
+        return JSONResponse(status_code=409, content={"error": "scenario already running"})
 
     await event_store.publish(
         event_type=CLOSET_SCAN_INITIATED,
@@ -91,10 +106,9 @@ async def run_critical_shortage(background_tasks: BackgroundTasks):
     Clears state, seeds initial conditions, publishes a scan-initiated event,
     and kicks off orchestration in the background.  Returns 202 immediately.
     """
-    if _scenario_lock.locked():
-        return JSONResponse(status_code=409, content={"error": "scenario already running"})
-
     _reset_and_seed()
+    if not await _wait_for_lock_release():
+        return JSONResponse(status_code=409, content={"error": "scenario already running"})
 
     await event_store.publish(
         event_type=CLOSET_SCAN_INITIATED,

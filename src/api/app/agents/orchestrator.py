@@ -24,6 +24,7 @@ from ..messages.message_store import MessageStore
 from ..models.enums import IntentTag, POState, ScanState, ShipmentState
 from ..state.store import StateStore
 from ..tools import tool_functions
+from .. import approval_signal
 
 logger = logging.getLogger(__name__)
 
@@ -959,39 +960,91 @@ async def _simulate_critical_shortage(
         intent_tag=IntentTag.EXECUTE,
     )
 
-    # ── Step 8: Compliance Gate approves PO ──────────────────────────
+    # ── Step 8: Wait for human approval via UI ────────────────────────
     await asyncio.sleep(STEP_DELAY)
     await message_store.publish(
         agent_name="supply-coordinator",
         agent_role="Supply Coordinator",
-        content="Delegating to Compliance Gate Agent (compliance-gate) for emergency PO approval.",
+        content="PO requires human approval. Waiting for compliance review via the Control Tower UI.",
         intent_tag=IntentTag.PROPOSE,
     )
 
     await asyncio.sleep(STEP_DELAY)
-    approve_result = await _call_tool(
-        "approve_purchase_order",
-        {
-            "po_id": po_id,
-            "approved": True,
-            "note": (
-                "Emergency approval granted — critical shortage in Med-Surg closet. "
-                "Patient safety risk. Expedited processing authorized."
-            ),
-        },
-        state_store=state_store, event_store=event_store, message_store=message_store,
-    )
-    if not approve_result.get("ok"):
-        return {"ok": False, "error": approve_result.get("error", "approve_purchase_order failed")}
-
     await message_store.publish(
         agent_name="compliance-gate",
         agent_role="Compliance Gate Agent",
         content=(
-            f"PO {po_id} APPROVED — emergency authorization.\n"
+            f"⏳ PO {po_id} (${po_total:.2f}) is awaiting human approval.\n"
+            f"  Please review and approve or reject in the Control Tower."
+        ),
+        intent_tag=IntentTag.VALIDATE,
+    )
+
+    # Poll state store until the PO is no longer PENDING_APPROVAL
+    # (human clicks Approve/Reject in the UI, which calls POST /api/approval/{po_id})
+    # Uses an asyncio.Event so the approval endpoint / reset can wake us instantly.
+    evt = approval_signal.create_event()
+    max_wait_seconds = 300  # 5 minute timeout
+    waited = 0.0
+    poll_interval = 1.0
+    while waited < max_wait_seconds:
+        po = state_store.get_purchase_order(po_id)
+        # PO gone (stores were reset) or state changed — stop waiting
+        if po is None or po.state != POState.PENDING_APPROVAL:
+            break
+        evt.clear()
+        try:
+            await asyncio.wait_for(evt.wait(), timeout=poll_interval)
+        except asyncio.TimeoutError:
+            pass
+        waited += poll_interval
+
+    po = state_store.get_purchase_order(po_id)
+    if po is None:
+        # Stores were reset while waiting — abort gracefully
+        return {"ok": False, "error": "Scenario reset during approval wait"}
+    if po.state == POState.PENDING_APPROVAL:
+        # Timed out waiting for human
+        await message_store.publish(
+            agent_name="compliance-gate",
+            agent_role="Compliance Gate Agent",
+            content=f"⚠️ PO {po_id} approval timed out after {max_wait_seconds}s. Please retry the scenario.",
+            intent_tag=IntentTag.ESCALATE,
+        )
+        return {"ok": False, "error": "Human approval timed out"}
+
+    if po.state == POState.CANCELLED:
+        await message_store.publish(
+            agent_name="compliance-gate",
+            agent_role="Compliance Gate Agent",
+            content=(
+                f"❌ PO {po_id} REJECTED by human reviewer.\n"
+                f"  Note: {po.approval_note}\n"
+                f"  Workflow halted. Manual intervention required."
+            ),
+            intent_tag=IntentTag.ESCALATE,
+        )
+        sim_latency = time.monotonic() - sim_start
+        return {
+            "ok": True,
+            "scenario": "critical-shortage",
+            "mode": "simulated",
+            "closet_id": closet_id,
+            "scan_id": scan_id,
+            "po_id": po_id,
+            "outcome": "rejected",
+            "metrics": _simulated_metrics(_AGENT_NAMES, sim_latency),
+        }
+
+    # PO was approved by the human
+    await message_store.publish(
+        agent_name="compliance-gate",
+        agent_role="Compliance Gate Agent",
+        content=(
+            f"✅ PO {po_id} APPROVED by human reviewer.\n"
             f"  ✓ Critical shortage confirmed in {closet.name}\n"
             f"  ✓ Patient safety justification documented\n"
-            f"  ✓ Approval: Human-approved (emergency protocol)\n"
+            f"  ✓ Approval: Human-approved via Control Tower\n"
             f"  PO cleared for immediate submission."
         ),
         intent_tag=IntentTag.VALIDATE,
