@@ -1,4 +1,4 @@
-import { ShoppingCart, Package, Truck, MessageSquare, Activity, Network } from "lucide-react";
+import { ShoppingCart, Package, Truck, MessageSquare, Activity, Network, ChevronUp, ChevronDown } from "lucide-react";
 import { PaneHeader } from "@/components/layout/PaneHeader";
 import { ScenarioToolbar } from "@/components/layout/ScenarioToolbar";
 import { OrderQueue } from "@/components/dashboard/OrderQueue";
@@ -22,6 +22,9 @@ export function ControlTower() {
 
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const toggleAgentPanel = useCallback(() => setAgentPanelOpen(prev => !prev), []);
+
+  const [networkPanelOpen, setNetworkPanelOpen] = useState(true);
+  const toggleNetworkPanel = useCallback(() => setNetworkPanelOpen(prev => !prev), []);
 
   // ── Human-in-the-loop approval state ──
   const [pendingPO, setPendingPO] = useState<PurchaseOrder | null>(null);
@@ -122,13 +125,29 @@ export function ControlTower() {
       </div>
       </div>
 
-      {/* ── Agent Network Panel ── */}
-      <section className="h-[200px] shrink-0 mx-2 mb-2 rounded-lg border border-tower-border bg-tower-surface overflow-hidden flex flex-col">
-        <PaneHeader icon={Network} title="Agent Network" />
-        <div className="flex-1 overflow-hidden">
-          <AgentNetwork messages={messages} />
-        </div>
-      </section>
+      {/* ── Agent Network Panel (collapsible) ── */}
+      <div className={cn(
+        "shrink-0 mx-2 mb-2 rounded-lg border border-tower-border bg-tower-surface overflow-hidden flex flex-col transition-[height] duration-300 ease-in-out",
+        networkPanelOpen ? "h-[200px]" : "h-[40px]"
+      )}>
+        <button
+          onClick={toggleNetworkPanel}
+          className="relative flex items-center gap-2.5 px-4 py-2.5 border-b border-tower-border hover:bg-white/[0.02] transition-colors cursor-pointer shrink-0"
+        >
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-tower-accent/40 to-transparent" />
+          <Network className="h-4 w-4 text-tower-accent shrink-0" />
+          <h2 className="text-sm font-semibold tracking-wide text-gray-200 uppercase">Agent Network</h2>
+          {networkPanelOpen
+            ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 ml-auto" />
+            : <ChevronUp className="h-3.5 w-3.5 text-gray-400 ml-auto" />
+          }
+        </button>
+        {networkPanelOpen && (
+          <div className="flex-1 overflow-hidden">
+            <AgentNetwork messages={messages} />
+          </div>
+        )}
+      </div>
 
       {/* ── Human-in-the-loop Approval Modal ── */}
       {pendingPO && (
