@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import approval, config, events, messages, metrics, scenarios, state
+from app.routers import approval, config, events, messages, metrics, scenarios, state, vision
 
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(scenarios.router, prefix="/api")
 app.include_router(metrics.router, prefix="/api")
 app.include_router(config.router, prefix="/api")
 app.include_router(approval.router, prefix="/api")
+app.include_router(vision.router, prefix="/api")
 
 
 @app.get("/health")

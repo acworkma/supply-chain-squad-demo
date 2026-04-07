@@ -9,11 +9,16 @@ import { AgentDirectory } from "@/components/dashboard/AgentDirectory";
 import { AgentConversation } from "@/components/conversation/AgentConversation";
 import { EventTimeline } from "@/components/timeline/EventTimeline";
 import { ApprovalModal } from "@/components/approval/ApprovalModal";
+import { ImageUpload } from "@/components/vision/ImageUpload";
+import { VisionAnalysis } from "@/components/vision/VisionAnalysis";
+import type { ScanImageResponse } from "@/components/vision/ImageUpload";
 import { useApi } from "@/hooks/useApi";
 import { useSSE } from "@/hooks/useSSE";
 import { cn } from "@/lib/utils";
 import type { Event, AgentMessage, PurchaseOrder } from "@/types/api";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+type DemoPhase = "upload" | "analysis" | "dashboard";
 
 export function ControlTower() {
   const { supplyItems, purchaseOrders, shipments, closets, loading, error } = useApi();
@@ -25,6 +30,49 @@ export function ControlTower() {
 
   const [networkPanelOpen, setNetworkPanelOpen] = useState(true);
   const toggleNetworkPanel = useCallback(() => setNetworkPanelOpen(prev => !prev), []);
+
+  // ── Demo phase state machine ──
+  const [phase, setPhase] = useState<DemoPhase>("upload");
+  const [scanResult, setScanResult] = useState<ScanImageResponse | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+
+  const handleScanComplete = useCallback((result: ScanImageResponse, imageFile: File) => {
+    setScanResult(result);
+    setUploadedImage(imageFile);
+    setPhase("analysis");
+  }, []);
+
+  const handleStartWorkflow = useCallback(async () => {
+    if (!scanResult) return;
+    try {
+      await fetch("/api/scenario/start-workflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          closet_id: scanResult.closet_id,
+          scenario_type: scanResult.scenario_type,
+        }),
+      });
+    } catch {
+      // Dashboard will reflect state via polling
+    }
+    setPhase("dashboard");
+  }, [scanResult]);
+
+  const handleNewScan = useCallback(async () => {
+    // Reset state and return to upload
+    clearEvents();
+    clearMessages();
+    lastHandledSeq.current = 0;
+    setScanResult(null);
+    setUploadedImage(null);
+    try {
+      await fetch("/api/scenario/seed", { method: "POST" });
+    } catch {
+      // silent
+    }
+    setPhase("upload");
+  }, [clearEvents, clearMessages]);
 
   // ── Human-in-the-loop approval state ──
   const [pendingPO, setPendingPO] = useState<PurchaseOrder | null>(null);
@@ -64,8 +112,37 @@ export function ControlTower() {
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col">
       {/* ── Scenario Toolbar ── */}
-      <ScenarioToolbar eventsConnected={eventsConnected} messagesConnected={messagesConnected} onReset={handleReset} />
+      <ScenarioToolbar
+        eventsConnected={eventsConnected}
+        messagesConnected={messagesConnected}
+        onReset={handleReset}
+        phase={phase}
+        onNewScan={handleNewScan}
+        closetName={scanResult?.closet_name}
+        uploadedImage={uploadedImage}
+      />
 
+      {/* ── Upload Phase ── */}
+      {phase === "upload" && (
+        <div className="flex-1 overflow-hidden">
+          <ImageUpload onScanComplete={handleScanComplete} />
+        </div>
+      )}
+
+      {/* ── Analysis Phase ── */}
+      {phase === "analysis" && scanResult && uploadedImage && (
+        <div className="flex-1 overflow-hidden">
+          <VisionAnalysis
+            scanResult={scanResult}
+            imageFile={uploadedImage}
+            onStartWorkflow={handleStartWorkflow}
+          />
+        </div>
+      )}
+
+      {/* ── Dashboard Phase ── */}
+      {phase === "dashboard" && (
+        <>
       {/* ── Main Grid ── */}
       <div className={cn(
         "flex-1 overflow-hidden grid grid-rows-[1fr] gap-2 p-2 transition-[grid-template-columns] duration-300 ease-in-out",
@@ -152,6 +229,8 @@ export function ControlTower() {
       {/* ── Human-in-the-loop Approval Modal ── */}
       {pendingPO && (
         <ApprovalModal po={pendingPO} onClose={handleApprovalClose} />
+      )}
+        </>
       )}
     </div>
   );
