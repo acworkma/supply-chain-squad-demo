@@ -89,7 +89,7 @@ async def validate() -> None:
             input="ping",
         )
         print(f"  ✅ Agent Framework connection validated")
-            print(f"  ✅ Model deployment '{model}' accessible")
+        print(f"  ✅ Model deployment '{model}' accessible")
     except Exception as exc:
         print(f"  ✗ Validation failed: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -97,9 +97,11 @@ async def validate() -> None:
         await credential.close()
 
     # Verify prompt files exist for all agents
-    missing = [n for n in AGENT_NAMES if not (PROMPTS_DIR / f"{n}.txt").exists()]
+    missing = [n for n in AGENT_NAMES if not (
+        PROMPTS_DIR / f"{n}.txt").exists()]
     if missing:
-        print(f"  ⚠ Missing prompt files: {', '.join(missing)}", file=sys.stderr)
+        print(
+            f"  ⚠ Missing prompt files: {', '.join(missing)}", file=sys.stderr)
     else:
         print(f"  ✅ All {len(AGENT_NAMES)} agent prompt files found")
 

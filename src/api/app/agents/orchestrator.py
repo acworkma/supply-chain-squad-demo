@@ -206,12 +206,14 @@ async def _run_live(
                 instructions=agent_instructions,
                 input=user_message,
             )
-            text = response.text if hasattr(response, 'text') else str(response)
+            text = response.text if hasattr(
+                response, 'text') else str(response)
 
             # Extract metrics if available
             if hasattr(response, 'usage') and response.usage:
                 total_input_tokens = getattr(response.usage, 'input_tokens', 0)
-                total_output_tokens = getattr(response.usage, 'output_tokens', 0)
+                total_output_tokens = getattr(
+                    response.usage, 'output_tokens', 0)
             rounds = 1
         finally:
             await credential.close()

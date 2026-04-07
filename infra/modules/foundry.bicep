@@ -52,21 +52,23 @@ resource aiServices 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
 // NOTE: Model availability varies by region. Verify with:
 //   az cognitiveservices model list --location <region> -o table
 @batchSize(1)
-resource modelDeploy 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = [for model in modelDeployments: {
-  parent: aiServices
-  name: model.name
-  sku: {
-    name: 'GlobalStandard'
-    capacity: model.capacity
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: model.name
-      version: model.version
+resource modelDeploy 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = [
+  for model in modelDeployments: {
+    parent: aiServices
+    name: model.name
+    sku: {
+      name: 'GlobalStandard'
+      capacity: model.capacity
+    }
+    properties: {
+      model: {
+        format: 'OpenAI'
+        name: model.name
+        version: model.version
+      }
     }
   }
-}]
+]
 
 // --- Foundry Project (child of the AI Services account) ---
 resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
@@ -81,7 +83,6 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
   dependsOn: [
     modelDeploy
   ]
-
 }
 
 // --- App Insights Connection for Agent Tracing in Foundry Portal ---
