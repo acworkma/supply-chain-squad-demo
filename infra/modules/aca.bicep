@@ -146,7 +146,15 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: foundryProjectEndpoint
             }
             {
+              name: 'FOUNDRY_PROJECT_ENDPOINT'
+              value: foundryProjectEndpoint
+            }
+            {
               name: 'MODEL_DEPLOYMENT_NAME'
+              value: modelDeploymentName
+            }
+            {
+              name: 'FOUNDRY_MODEL_DEPLOYMENT_NAME'
               value: modelDeploymentName
             }
             {

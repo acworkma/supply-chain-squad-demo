@@ -42,6 +42,8 @@ module foundry 'modules/foundry.bicep' = {
     primaryModelName: modelName
     tags: tags
     logAnalyticsWorkspaceId: observability.outputs.logAnalyticsWorkspaceId
+    appInsightsConnectionString: observability.outputs.appInsightsConnectionString
+    appInsightsResourceId: observability.outputs.appInsightsResourceId
   }
 }
 

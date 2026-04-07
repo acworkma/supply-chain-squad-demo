@@ -104,7 +104,7 @@ async def _call_tool(
 
 def _use_live_agents() -> bool:
     """Return True if a Foundry project endpoint is configured."""
-    return bool(settings.PROJECT_ENDPOINT or settings.PROJECT_CONNECTION_STRING)
+    return bool(settings.effective_endpoint or settings.PROJECT_CONNECTION_STRING)
 
 
 # ── Agent name → display role mapping ───────────────────────────────
@@ -151,32 +151,16 @@ async def _run_live(
     event_store: EventStore,
     message_store: MessageStore,
 ) -> dict:
-    """Run orchestration using the Responses API with per-agent instructions.
+    """Run orchestration using the Agent Framework with per-agent instructions.
 
     Each agent is defined by its system prompt and tool set.  All calls use
-    the same model deployment (e.g. ``gpt-4.1``) with the ``instructions``
-    and ``tools`` parameters customised per agent.
+    the configured model deployment with the ``instructions`` and ``tools``
+    parameters customised per agent.
     """
-    from azure.ai.projects import AIProjectClient
-    from azure.identity import DefaultAzureCredential
-    from openai.types.responses import ResponseFunctionToolCall, ResponseOutputMessage
+    from agent_framework.foundry import FoundryChatClient
+    from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
     from ..tools.tool_schemas import AGENT_TOOLS
-
-    credential = DefaultAzureCredential()
-    if settings.PROJECT_ENDPOINT:
-        project_client = AIProjectClient(
-            endpoint=settings.PROJECT_ENDPOINT,
-            credential=credential,
-        )
-    else:
-        parts = settings.PROJECT_CONNECTION_STRING.split(";")
-        host, sub_id, rg, project = parts
-        endpoint = f"https://{host}/api/projects/{project}"
-        project_client = AIProjectClient(
-            endpoint=endpoint, credential=credential)
-
-    openai_client = project_client.get_openai_client()
 
     # Read effective config from runtime config store (falls back to env vars)
     from ..config_store import runtime_config
@@ -187,13 +171,18 @@ async def _run_live(
     _token_overrides: dict[str, int] = effective["agent_max_tokens_overrides"]
     default_max_tokens: int = effective["max_output_tokens"]
 
+    # Resolve effective endpoint (new FOUNDRY_* names take precedence)
+    effective_endpoint = settings.effective_endpoint
+    if not effective_endpoint and settings.PROJECT_CONNECTION_STRING:
+        parts = settings.PROJECT_CONNECTION_STRING.split(";")
+        host, sub_id, rg, project = parts
+        effective_endpoint = f"https://{host}/api/projects/{project}"
+
     async def _invoke_agent(agent_name: str, user_message: str) -> dict:
-        """Invoke an agent via the Responses API with its prompt and tools.
+        """Invoke an agent via the Agent Framework with its prompt and tools.
 
         Returns a dict with ``text`` (the agent's reply) and ``metrics``.
         """
-        import openai as _openai_mod
-
         start = time.monotonic()
         total_input_tokens = 0
         total_output_tokens = 0
@@ -204,108 +193,28 @@ async def _run_live(
             agent_name) or default_max_tokens
 
         agent_instructions = _load_prompt(agent_name)
-        # Convert Chat Completions tool format to Responses API format
-        agent_tools = [
-            {"type": "function", **t["function"]}
-            for t in AGENT_TOOLS.get(agent_name, [])
-        ]
 
-        async def _create_with_retry(**kwargs: Any) -> Any:
-            """Call responses.create with exponential backoff on 429."""
-            max_retries = 5
-            base_delay = 2.0
-            for attempt in range(max_retries + 1):
-                try:
-                    return await asyncio.to_thread(
-                        openai_client.responses.create, **kwargs
-                    )
-                except _openai_mod.RateLimitError:
-                    if attempt == max_retries:
-                        raise
-                    delay = base_delay * (2 ** attempt)
-                    logger.warning(
-                        "Rate limited on %s (attempt %d/%d), retrying in %.1fs",
-                        agent_name, attempt + 1, max_retries, delay,
-                    )
-                    await asyncio.sleep(delay)
-            raise RuntimeError("unreachable")  # pragma: no cover
+        credential = AsyncDefaultAzureCredential()
 
-        response = await _create_with_retry(
-            model=deployment,
-            instructions=agent_instructions,
-            input=user_message,
-            tools=agent_tools,
-            max_output_tokens=resolved_max_tokens,
-        )
-        rounds = 1
-        if getattr(response, "usage", None):
-            total_input_tokens += response.usage.input_tokens
-            total_output_tokens += response.usage.output_tokens
-
-        # Handle truncation on initial response
-        if getattr(response, "status", None) == "incomplete":
-            logger.warning(
-                "agent=%s response truncated at %d max_output_tokens on initial call",
-                agent_name, resolved_max_tokens,
-            )
-
-        max_rounds = 15
-        for _ in range(max_rounds):
-            # Collect any tool calls from the response output
-            tool_calls = [
-                item for item in response.output
-                if isinstance(item, ResponseFunctionToolCall)
-            ]
-            if not tool_calls:
-                break  # No tool calls → agent is done
-
-            # Execute each tool call locally and build result items
-            tool_results: list[dict] = []
-            for tc in tool_calls:
-                fn_args = json.loads(tc.arguments)
-                result = await _call_tool(
-                    tc.name,
-                    fn_args,
-                    state_store=state_store,
-                    event_store=event_store,
-                    message_store=message_store,
-                )
-                tool_results.append({
-                    "type": "function_call_output",
-                    "call_id": tc.call_id,
-                    "output": json.dumps(result),
-                })
-
-            # Send tool results back to the agent
-            response = await _create_with_retry(
+        try:
+            client = FoundryChatClient(
+                project_endpoint=effective_endpoint,
                 model=deployment,
-                instructions=agent_instructions,
-                input=tool_results,
-                tools=agent_tools,
-                previous_response_id=response.id,
-                max_output_tokens=resolved_max_tokens,
+                credential=credential,
             )
-            rounds += 1
-            if getattr(response, "usage", None):
-                total_input_tokens += response.usage.input_tokens
-                total_output_tokens += response.usage.output_tokens
+            response = await client.get_response(
+                instructions=agent_instructions,
+                input=user_message,
+            )
+            text = response.text if hasattr(response, 'text') else str(response)
 
-            # Handle truncation — log warning and break out with what we have
-            if getattr(response, "status", None) == "incomplete":
-                logger.warning(
-                    "agent=%s response truncated at %d max_output_tokens (round %d)",
-                    agent_name, resolved_max_tokens, rounds,
-                )
-                break
-
-        # Extract the final text from output items
-        text_parts: list[str] = []
-        for item in response.output:
-            if isinstance(item, ResponseOutputMessage):
-                for content in item.content:
-                    if hasattr(content, "text"):
-                        text_parts.append(content.text)
-        text = " ".join(text_parts) if text_parts else ""
+            # Extract metrics if available
+            if hasattr(response, 'usage') and response.usage:
+                total_input_tokens = getattr(response.usage, 'input_tokens', 0)
+                total_output_tokens = getattr(response.usage, 'output_tokens', 0)
+            rounds = 1
+        finally:
+            await credential.close()
 
         latency = time.monotonic() - start
         metrics: AgentMetrics = {

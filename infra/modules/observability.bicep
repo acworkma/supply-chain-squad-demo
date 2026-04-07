@@ -47,3 +47,6 @@ output appInsightsConnectionString string = appInsights.properties.ConnectionStr
 
 @description('Instrumentation key for Application Insights')
 output appInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey
+
+@description('Resource ID of the Application Insights component')
+output appInsightsResourceId string = appInsights.id

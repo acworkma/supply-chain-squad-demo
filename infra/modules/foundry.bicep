@@ -19,6 +19,12 @@ param tags object
 @description('Resource ID of Log Analytics Workspace for diagnostics')
 param logAnalyticsWorkspaceId string
 
+@description('Application Insights connection string for agent tracing')
+param appInsightsConnectionString string
+
+@description('Application Insights resource ID for Foundry connection')
+param appInsightsResourceId string
+
 var aiServicesName = 'aif-${namePrefix}-${resourceToken}'
 var aiProjectName = 'proj-${namePrefix}-${resourceToken}'
 
@@ -76,6 +82,20 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
     modelDeploy
   ]
 
+}
+
+// --- App Insights Connection for Agent Tracing in Foundry Portal ---
+resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
+  parent: aiProject
+  name: 'appinsights'
+  properties: {
+    category: 'AppInsights'
+    target: appInsightsResourceId
+    authType: 'AAD'
+    metadata: {
+      ConnectionString: appInsightsConnectionString
+    }
+  }
 }
 
 // --- Diagnostic Settings for AI Services ---
