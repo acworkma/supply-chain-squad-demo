@@ -166,3 +166,15 @@
 - Registered in `main.py` as `app.include_router(vision.router, prefix="/api")`
 - Existing `/api/scenario/routine-restock` and `/api/scenario/critical-shortage` endpoints preserved for backward compatibility
 - All 6 functional smoke tests pass (recognized file, unrecognized file, case-insensitive, start-workflow, unknown closet, backward compat)
+
+### 2026-04-07: Agent Framework SDK Migration
+
+- Migrated from `azure-ai-projects` + OpenAI Responses API to Microsoft Agent Framework SDK (`agent-framework-azure-ai==1.0.0rc3`, `agent-framework-core==1.0.0rc3`)
+- **pyproject.toml**: Replaced `azure-ai-projects>=2.0.0b1` with Agent Framework + hosting adapter + `azure-monitor-opentelemetry` packages
+- **config.py**: Added `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT_NAME`, `APPLICATIONINSIGHTS_CONNECTION_STRING` fields. Added `effective_endpoint` and `effective_model` properties (new names preferred, fallback to legacy)
+- **orchestrator.py `_run_live()`**: Replaced `AIProjectClient` + `openai_client.responses.create()` with `AzureAIClient(...).as_agent()`. Each agent gets its own client instance. Uses `async with` context manager. `_invoke_agent` simplified — Agent Framework handles the tool-call loop internally. Kept local tool dispatch architecture note but framework handles it now.
+- **orchestrator.py `_use_live_agents()`**: Updated to check `settings.effective_endpoint` (supports both FOUNDRY_* and legacy env var names)
+- **main.py**: Added OTel initialization in lifespan — `configure_azure_monitor()` for App Insights, `configure_otel_providers()` for Agent Framework built-in tracing. Both wrapped in conditional/try-except for dev mode.
+- **build_agents.py**: Converted from create-agents-in-Foundry to validate-connection script. Uses `AzureAIClient.as_agent()` to verify endpoint/model accessibility. Agents created at runtime by orchestrator.
+- **azure.yaml**: Updated postprovision hook to install Agent Framework packages instead of azure-ai-projects
+- Simulated mode (`_run_simulated`) completely untouched. All 397+ non-scenario tests pass. Config properties work correctly.

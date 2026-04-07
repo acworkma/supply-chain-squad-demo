@@ -201,6 +201,16 @@
 - **Author:** Viper | **Date:** 2026-04-07 | **Status:** Implemented
 - ControlTower refactored to `DemoPhase` state machine: upload (ImageUpload.tsx drag-drop), analysis (VisionAnalysis.tsx scanning animation + progressive item reveal), dashboard (existing). ScenarioToolbar shows "New Scan" button + closet thumbnail in dashboard phase. 422 error handling for unrecognized closet images.
 
+### SDK-001: Agent Framework SDK Migration
+
+- **Author:** Goose | **Date:** 2026-04-07 | **Status:** Implemented
+- Migrated live agent orchestration from `azure-ai-projects` + OpenAI Responses API to Microsoft Agent Framework SDK (`agent-framework-azure-ai==1.0.0rc3`). Added dual env var support (`FOUNDRY_PROJECT_ENDPOINT` / `PROJECT_ENDPOINT`) for backward compatibility. Added OpenTelemetry + Azure Monitor instrumentation in app lifespan. Converted `build_agents.py` from agent-creation to validation-only (agents now created at runtime). Live mode only — simulated mode unchanged. No API contract changes. All existing tests pass.
+
+### INFRA-003: Foundry Agent Tracing via App Insights Connection
+
+- **Author:** Iceman | **Date:** 2026-04-07 | **Status:** Implemented
+- Added `Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01` resource to wire Application Insights into the Foundry project for agent tracing. Added `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` env vars to ACA container alongside existing names for Agent Framework SDK compatibility. Bicep diagnostics clean.
+
 ## Governance
 
 - All meaningful changes require team consensus

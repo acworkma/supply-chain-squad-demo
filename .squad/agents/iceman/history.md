@@ -38,3 +38,11 @@
 - **Primary model:** Retained `modelName` param (default `gpt-5.2`) passed through as `primaryModelName` so ACA's `MODEL_DEPLOYMENT_NAME` env var is unchanged. New `ALL_MODEL_DEPLOYMENT_NAMES` output exposes all deployment names for the eval harness.
 - **Model versions:** Used reasonable defaults; added comments directing operators to verify with `az cognitiveservices model list --location <region>`.
 - **Validation:** `az bicep build` passes clean. ARM template (`main.json`) regenerated.
+
+### 2026-04-07: Foundry Agent Tracing + Agent Framework Env Vars
+
+- **Files modified:** `infra/modules/aca.bicep`, `infra/modules/foundry.bicep`, `infra/modules/observability.bicep`, `infra/main.bicep`
+- **ACA env vars:** Added `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL_DEPLOYMENT_NAME` alongside existing `PROJECT_ENDPOINT` / `MODEL_DEPLOYMENT_NAME` for Microsoft Agent Framework SDK compatibility. Both naming conventions kept for backward compat.
+- **Foundry App Insights connection:** Added `Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01` child resource on the AI project with `category: AppInsights`, `authType: AAD`, and connection string in metadata. This enables agent tracing visibility in the Foundry portal.
+- **Observability output:** Added `appInsightsResourceId` output from observability module; passed through main.bicep to foundry module.
+- **Validation:** Bicep diagnostics pass clean on all four files (main + 3 modules).
