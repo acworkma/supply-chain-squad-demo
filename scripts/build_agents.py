@@ -84,10 +84,11 @@ async def validate() -> None:
             model=model,
             credential=credential,
         )
-        response = await client.get_response(
-            instructions="You are a test agent. Reply with OK.",
-            input="ping",
-        )
+        from agent_framework import Message
+        response = await client.get_response([
+            Message(role="system", contents=["You are a test agent. Reply with OK."]),
+            Message(role="user", contents=["ping"]),
+        ])
         print(f"  ✅ Agent Framework connection validated")
         print(f"  ✅ Model deployment '{model}' accessible")
     except Exception as exc:

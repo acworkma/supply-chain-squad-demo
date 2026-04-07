@@ -157,6 +157,7 @@ async def _run_live(
     the configured model deployment with the ``instructions`` and ``tools``
     parameters customised per agent.
     """
+    from agent_framework import Message
     from agent_framework.foundry import FoundryChatClient
     from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
@@ -202,10 +203,10 @@ async def _run_live(
                 model=deployment,
                 credential=credential,
             )
-            response = await client.get_response(
-                instructions=agent_instructions,
-                input=user_message,
-            )
+            response = await client.get_response([
+                Message(role="system", contents=[agent_instructions]),
+                Message(role="user", contents=[user_message]),
+            ])
             text = response.text if hasattr(
                 response, 'text') else str(response)
 
