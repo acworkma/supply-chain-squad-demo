@@ -156,6 +156,14 @@
 - **Author:** Squad Coordinator | **Date:** 2026-04-02 | **Status:** Verified
 - Full domain pivot from bed management to supply closet replenishment is complete. 505 backend tests passing, 20 frontend tests passing, TypeScript compiles clean. All stale bed-management references cleaned up across infrastructure (azure.yaml, Bicep, main.json), documentation (architecture.md, azure-deployment.md, local-development.md), scripts (build_agents.py), and frontend (package.json, CommandCenter.tsx, test data). 5 agents operational: supply-coordinator, supply-scanner, catalog-sourcer, order-manager, compliance-gate. Both scenarios (routine-restock, critical-shortage) fully implemented in simulated mode.
 
+### VISION-001: Two-Phase Image Scan API Design
+- **Author:** Goose | **Date:** 2026-04-07 | **Status:** Implemented
+- Added `POST /api/scenario/scan-image` (filename → closet detection + inventory) and `POST /api/scenario/start-workflow` (closet_id + scenario_type → orchestration). New router at `src/api/app/routers/vision.py`. Two-phase design lets UI show detected inventory before user confirms workflow start. Vision router has its own `_scenario_lock` (not shared with scenarios.py) — acceptable for demo single-user sequential interactions.
+
+### UI-003: Three-Phase Demo Flow (Upload → Analysis → Dashboard)
+- **Author:** Viper | **Date:** 2026-04-07 | **Status:** Implemented
+- ControlTower refactored to `DemoPhase` state machine: upload (ImageUpload.tsx drag-drop), analysis (VisionAnalysis.tsx scanning animation + progressive item reveal), dashboard (existing). ScenarioToolbar shows "New Scan" button + closet thumbnail in dashboard phase. 422 error handling for unrecognized closet images.
+
 ## Governance
 
 - All meaningful changes require team consensus

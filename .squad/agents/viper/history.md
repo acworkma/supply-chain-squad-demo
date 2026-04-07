@@ -103,3 +103,12 @@
 - **Dashboard components updated** — PatientQueue.tsx (OrderQueue): now renders PurchaseOrders with PO#, vendor, state, approval, items, total. BedBoard.tsx (InventoryBoard): now renders SupplyItems grouped by closet, showing SKU, criticality badge, current/par quantities. TransportQueue.tsx (ShipmentTracker): simplified for new Shipment shape (po_id, closet_id, items_count, expected_delivery).
 - **ControlTower.tsx updated** — Passes new data shape (supplyItems, purchaseOrders, closets) to child components. Section titles updated.
 - **Build verified**: `tsc --noEmit` clean, `vite build` clean (1527 modules, 3.68s).
+
+### 2026-04-07: Image Upload + Vision Analysis Flow
+
+- **New component `ImageUpload.tsx`** at `src/ui/src/components/vision/ImageUpload.tsx` — drag-and-drop/click-to-browse upload zone. Uses `POST /api/scenario/scan-image` (multipart form). Shows error card with "Try Again" on 422 (unrecognized closet).
+- **New component `VisionAnalysis.tsx`** at `src/ui/src/components/vision/VisionAnalysis.tsx` — split-panel: uploaded image (left) with scanning overlay animation (requestAnimationFrame scan line + corner brackets), detected items list (right) with staggered reveal (200ms per item). Status dots use same red/amber/green logic from InventoryBoard. "Start Restock Workflow" button calls `POST /api/scenario/start-workflow`.
+- **ControlTower phase state machine** — three phases: `"upload"` → `"analysis"` → `"dashboard"`. State held as `DemoPhase` union type. Upload/analysis phases hide the full dashboard grid. Dashboard phase renders everything as before.
+- **ScenarioToolbar modified** — accepts `phase`, `onNewScan`, `closetName`, `uploadedImage` props. In dashboard phase: "New Scan" button (returns to upload + resets state), image thumbnail + closet name badge, then existing scenario dropdown + reset. In upload/analysis phases: just app title + connection indicator.
+- **Scan overlay animation** — CSS + rAF hybrid. Scan line is a `div` positioned absolutely, moved via `requestAnimationFrame` during "scanning" phase. Corner bracket decorations via border utilities. No animation libraries.
+- **Build verified clean**: `tsc --noEmit` zero errors, `vite build` 1530 modules, 5.38s.

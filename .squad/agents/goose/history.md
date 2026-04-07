@@ -140,3 +140,14 @@
 - Updated `src/api/app/tools/__init__.py` with new exports.
 - All 10 functions + 10 schemas + 6 agent tool sets + 6 v2 sets import cleanly verified.
 - **Downstream breakage remaining:** `orchestrator.py` dispatch table, `routers/scenarios.py`, `routers/state.py`, and all tests still reference old function/schema names.
+
+### 2026-04-07: Vision-based scenario trigger — scan-image + start-workflow endpoints
+- Created `src/api/app/routers/vision.py`: two new endpoints for the image-upload demo flow
+- `POST /api/scenario/scan-image`: receives multipart file upload, extracts filename stem (case-insensitive), maps to one of 5 closets via `CLOSET_MAP` dict. Returns 422 for unknown filenames, 200 with closet metadata + SupplyItem inventory for matches. Calls `_reset_and_seed()` and respects scenario lock.
+- `POST /api/scenario/start-workflow`: receives JSON `{closet_id, scenario_type}`, publishes CLOSET_SCAN_INITIATED event + supply-coordinator initial message, runs `run_scenario()` in background. Returns 202.
+- Pattern: two-phase design — scan-image detects and returns inventory (user reviews), start-workflow kicks off orchestration (user confirms). Separates detection from execution.
+- Closet map: icu→CLO-ICU-01 (routine-restock), or→CLO-OR-01 (routine-restock), nicu→CLO-NICU-01 (routine-restock), surgery→CLO-SURG-01 (critical-shortage), oncology→CLO-ONC-01 (routine-restock)
+- Has its own `_scenario_lock`, `_wait_for_lock_release()`, `_reset_and_seed()` — same pattern as scenarios.py
+- Registered in `main.py` as `app.include_router(vision.router, prefix="/api")`
+- Existing `/api/scenario/routine-restock` and `/api/scenario/critical-shortage` endpoints preserved for backward compatibility
+- All 6 functional smoke tests pass (recognized file, unrecognized file, case-insensitive, start-workflow, unknown closet, backward compat)
