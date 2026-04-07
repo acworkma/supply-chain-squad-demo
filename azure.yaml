@@ -13,6 +13,6 @@ hooks:
   postprovision:
     shell: sh
     run: |
-      pip install azure-identity "agent-framework-azure-ai==1.0.0rc3" "agent-framework-core==1.0.0rc3"
+      pip install azure-identity "agent-framework-foundry==1.0.0"
       python scripts/build_agents.py
     continueOnError: false
