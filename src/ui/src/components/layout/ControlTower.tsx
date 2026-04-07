@@ -105,7 +105,10 @@ export function ControlTower() {
     lastHandledSeq.current = 0;
   }, [clearEvents, clearMessages]);
 
-  const itemList = Object.values(supplyItems);
+  const allItems = Object.values(supplyItems);
+  const itemList = scanResult
+    ? allItems.filter((item) => item.closet_id === scanResult.closet_id)
+    : allItems;
   const poList = Object.values(purchaseOrders);
   const shipmentList = Object.values(shipments);
 
@@ -115,7 +118,6 @@ export function ControlTower() {
       <ScenarioToolbar
         eventsConnected={eventsConnected}
         messagesConnected={messagesConnected}
-        onReset={handleReset}
         phase={phase}
         onNewScan={handleNewScan}
         closetName={scanResult?.closet_name}
