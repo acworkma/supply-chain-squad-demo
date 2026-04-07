@@ -21,7 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type DemoPhase = "upload" | "analysis" | "dashboard";
 
 export function ControlTower() {
-  const { supplyItems, purchaseOrders, shipments, closets, loading, error } = useApi();
+  const { supplyItems, purchaseOrders, shipments, loading, error } = useApi();
   const { items: events, connected: eventsConnected, clear: clearEvents } = useSSE<Event>("/api/events/stream");
   const { items: messages, connected: messagesConnected, clear: clearMessages } = useSSE<AgentMessage>("/api/agent-messages/stream");
 
@@ -98,12 +98,6 @@ export function ControlTower() {
   }, [events]);
 
   const handleApprovalClose = useCallback(() => setPendingPO(null), []);
-
-  const handleReset = useCallback(() => {
-    clearEvents();
-    clearMessages();
-    lastHandledSeq.current = 0;
-  }, [clearEvents, clearMessages]);
 
   const allItems = Object.values(supplyItems);
   const itemList = scanResult

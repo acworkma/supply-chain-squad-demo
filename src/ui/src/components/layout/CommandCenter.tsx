@@ -1,5 +1,4 @@
 import { Package } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 /**
  * CommandCenter — main app shell for the Supply Chain demo.
