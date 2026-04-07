@@ -86,7 +86,8 @@ async def validate() -> None:
         )
         from agent_framework import Message
         response = await client.get_response([
-            Message(role="system", contents=["You are a test agent. Reply with OK."]),
+            Message(role="system", contents=[
+                    "You are a test agent. Reply with OK."]),
             Message(role="user", contents=["ping"]),
         ])
         print(f"  ✅ Agent Framework connection validated")
