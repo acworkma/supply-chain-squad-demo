@@ -258,17 +258,48 @@ ESCALATE = {
 }
 
 
-# ── Per-agent tool sets (5 agents per DOMAIN-C-002) ─────────────────
+# ── Batch tools (reduce LLM round-trips) ───────────────────────────
 
-SUPPLY_COORDINATOR_TOOLS = [GET_SCAN, GET_ITEMS, GET_VENDORS,
-                            GET_PURCHASE_ORDERS, GET_SHIPMENTS, PUBLISH_EVENT, ESCALATE]
-SUPPLY_SCANNER_TOOLS = [GET_ITEMS, INITIATE_SCAN, ANALYZE_SCAN, PUBLISH_EVENT]
-CATALOG_SOURCER_TOOLS = [GET_ITEMS, GET_VENDORS,
-                         LOOKUP_VENDOR_CATALOG, PUBLISH_EVENT]
-ORDER_MANAGER_TOOLS = [GET_SCAN, GET_PURCHASE_ORDERS, CREATE_PURCHASE_ORDER,
-                       APPROVE_PURCHASE_ORDER, SUBMIT_PURCHASE_ORDER, CREATE_SHIPMENT, RECEIVE_SHIPMENT, PUBLISH_EVENT]
-COMPLIANCE_GATE_TOOLS = [GET_PURCHASE_ORDERS, GET_ITEMS,
-                         APPROVE_PURCHASE_ORDER, ESCALATE, PUBLISH_EVENT]
+LOOKUP_VENDOR_CATALOG_BATCH = {
+    "type": "function",
+    "function": {
+        "name": "lookup_vendor_catalog_batch",
+        "description": "Look up vendor catalog entries for MULTIPLE item SKUs in one call. Returns recommended vendor per SKU and an overall recommended vendor.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "item_skus": {"type": "array", "items": {"type": "string"}, "description": "List of item SKUs to look up."},
+            },
+            "required": ["item_skus"],
+        },
+    },
+}
+
+COMPLETE_ORDER_LIFECYCLE = {
+    "type": "function",
+    "function": {
+        "name": "complete_order_lifecycle",
+        "description": "Execute the full PO lifecycle in one call: create PO, submit to vendor, create shipment, receive delivery and restock. Stops early if PO requires human approval (>=1000).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scan_id": {"type": "string", "description": "The scan that identified items to reorder."},
+                "vendor_id": {"type": "string", "description": "The vendor to order from."},
+            },
+            "required": ["scan_id", "vendor_id"],
+        },
+    },
+}
+
+# ── Per-agent tool sets (5 agents per DOMAIN-C-002) ─────────────────
+# Trimmed to only the tools each agent actually uses to reduce input tokens.
+
+# coordinator delegates, doesn't call tools
+SUPPLY_COORDINATOR_TOOLS: list[dict] = []
+SUPPLY_SCANNER_TOOLS = [INITIATE_SCAN, ANALYZE_SCAN]
+CATALOG_SOURCER_TOOLS = [LOOKUP_VENDOR_CATALOG_BATCH]
+ORDER_MANAGER_TOOLS = [COMPLETE_ORDER_LIFECYCLE, APPROVE_PURCHASE_ORDER]
+COMPLIANCE_GATE_TOOLS = [GET_PURCHASE_ORDERS, APPROVE_PURCHASE_ORDER, ESCALATE]
 
 AGENT_TOOLS: dict[str, list[dict]] = {
     "supply-coordinator": SUPPLY_COORDINATOR_TOOLS,

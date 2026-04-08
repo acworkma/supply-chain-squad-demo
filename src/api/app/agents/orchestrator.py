@@ -59,11 +59,13 @@ TOOL_DISPATCH: dict[str, Any] = {
     "initiate_scan": tool_functions.initiate_scan,
     "analyze_scan": tool_functions.analyze_scan,
     "lookup_vendor_catalog": tool_functions.lookup_vendor_catalog,
+    "lookup_vendor_catalog_batch": tool_functions.lookup_vendor_catalog_batch,
     "create_purchase_order": tool_functions.create_purchase_order,
     "approve_purchase_order": tool_functions.approve_purchase_order,
     "submit_purchase_order": tool_functions.submit_purchase_order,
     "create_shipment": tool_functions.create_shipment,
     "receive_shipment": tool_functions.receive_shipment,
+    "complete_order_lifecycle": tool_functions.complete_order_lifecycle,
     "publish_event": tool_functions.publish_event,
     "escalate": tool_functions.escalate,
 }
@@ -217,6 +219,21 @@ async def _run_live(
             tools.append(tool)
         return tools
 
+    # Per-agent max-tokens defaults (lower = faster for simple-role agents)
+    _AGENT_TOKEN_DEFAULTS: dict[str, int] = {
+        "supply-coordinator": 256,
+        "supply-scanner": 256,
+        "catalog-sourcer": 256,
+        "compliance-gate": 256,
+        "order-manager": 256,
+    }
+
+    # Create a SINGLE credential to reuse across all agent calls
+    mi_client_id = os.environ.get("AZURE_CLIENT_ID")
+    shared_credential = AsyncDefaultAzureCredential(
+        managed_identity_client_id=mi_client_id,
+    ) if mi_client_id else AsyncDefaultAzureCredential()
+
     async def _invoke_agent(agent_name: str, user_message: str) -> dict:
         """Invoke an agent via the Agent Framework with its prompt and tools.
 
@@ -229,22 +246,16 @@ async def _run_live(
 
         deployment = _model_overrides.get(agent_name) or default_deployment
         resolved_max_tokens = _token_overrides.get(
-            agent_name) or default_max_tokens
+            agent_name) or _AGENT_TOKEN_DEFAULTS.get(agent_name, default_max_tokens)
 
         agent_instructions = _load_prompt(agent_name)
         agent_tools = _build_function_tools(agent_name)
-
-        # Use AZURE_CLIENT_ID for user-assigned managed identity in Container Apps
-        mi_client_id = os.environ.get("AZURE_CLIENT_ID")
-        credential = AsyncDefaultAzureCredential(
-            managed_identity_client_id=mi_client_id,
-        ) if mi_client_id else AsyncDefaultAzureCredential()
 
         try:
             client = FoundryChatClient(
                 project_endpoint=effective_endpoint,
                 model=deployment,
-                credential=credential,
+                credential=shared_credential,
             )
             options = {
                 "tools": agent_tools,
@@ -266,8 +277,8 @@ async def _run_live(
                 total_output_tokens = getattr(
                     response.usage, 'output_tokens', 0)
             rounds = 1
-        finally:
-            await credential.close()
+        except Exception:
+            raise
 
         latency = time.monotonic() - start
         metrics: AgentMetrics = {
@@ -305,7 +316,8 @@ async def _run_live(
         for i in closet_items
     ]
     state_snapshot = json.dumps(
-        {"closet_id": closet_id, "name": closet.name, "unit": closet.unit, "items": items_brief},
+        {"closet_id": closet_id, "name": closet.name,
+            "unit": closet.unit, "items": items_brief},
     )
 
     initial_msg = (
@@ -325,77 +337,109 @@ async def _run_live(
         intent_tag=IntentTag.PROPOSE,
     )
 
-    # Step 2: Invoke specialist agents in sequence with targeted context
-    # Track key IDs produced by earlier agents for downstream use
+    # Step 2: Run supply-scanner + catalog-sourcer in PARALLEL
+    # They are independent: scanner scans the closet, sourcer looks up vendors
+    # for items already known to be below par from the state snapshot.
+    below_par_skus = [i["sku"] for i in items_brief if i["qty"] < i["par"]]
+
+    scanner_msg = f"Scan closet_id={closet_id}. Call initiate_scan then analyze_scan."
+    sourcer_msg = (
+        f"Look up vendors for these SKUs in a single call: {json.dumps(below_par_skus)}."
+    )
+
+    await message_store.publish(
+        agent_name="supply-coordinator",
+        agent_role="Supply Coordinator",
+        content="Delegating to Supply Scanner and Catalog Sourcer in parallel.",
+        intent_tag=IntentTag.PROPOSE,
+    )
+
+    scanner_task = asyncio.create_task(
+        _invoke_agent("supply-scanner", scanner_msg))
+    sourcer_task = asyncio.create_task(
+        _invoke_agent("catalog-sourcer", sourcer_msg))
+    scanner_result, sourcer_result = await asyncio.gather(scanner_task, sourcer_task)
+
+    # Publish scanner results
+    await message_store.publish(
+        agent_name="supply-scanner",
+        agent_role=_AGENT_ROLES["supply-scanner"],
+        content=scanner_result["text"],
+        intent_tag=IntentTag.EXECUTE,
+    )
+    agent_metrics_list.append(scanner_result["metrics"])
+
+    # Extract scan_id from state store
     scan_id = None
+    scans = state_store.get_scans()
+    if scans:
+        scan_id = scans[-1].id
+        logger.info("Extracted scan_id=%s from state store", scan_id)
+
+    # Publish sourcer results
+    await message_store.publish(
+        agent_name="catalog-sourcer",
+        agent_role=_AGENT_ROLES["catalog-sourcer"],
+        content=sourcer_result["text"],
+        intent_tag=IntentTag.PROPOSE,
+    )
+    agent_metrics_list.append(sourcer_result["metrics"])
+
+    # Extract recommended vendor
+    import re
     recommended_vendor_id = None
+    vendor_match = re.search(r'(VND-[A-Z]+)', sourcer_result["text"])
+    if vendor_match:
+        recommended_vendor_id = vendor_match.group(1)
+        logger.info(
+            "Extracted vendor_id=%s from catalog-sourcer reply", recommended_vendor_id)
 
-    specialist_sequence = [
-        ("supply-scanner", IntentTag.EXECUTE),
-        ("catalog-sourcer", IntentTag.PROPOSE),
-        ("compliance-gate", IntentTag.VALIDATE),
-        ("order-manager", IntentTag.EXECUTE),
-    ]
+    # Step 3: Compliance Gate
+    await asyncio.sleep(STEP_DELAY)
+    await message_store.publish(
+        agent_name="supply-coordinator",
+        agent_role="Supply Coordinator",
+        content="Delegating to Compliance Gate.",
+        intent_tag=IntentTag.PROPOSE,
+    )
+    critical_items = [
+        i for i in items_brief if i["criticality"] == "CRITICAL" and i["qty"] < i["par"]]
+    compliance_msg = (
+        f"Closet: {closet_id}. Critical items below par: "
+        f"{json.dumps([{'name': i['name'], 'qty': i['qty'], 'par': i['par'], 'days': round(i['qty']/i['rate'], 1)} for i in critical_items])}. "
+        f"Escalate if <2 days supply. Check for any POs needing approval."
+    )
+    compliance_result = await _invoke_agent("compliance-gate", compliance_msg)
+    await message_store.publish(
+        agent_name="compliance-gate",
+        agent_role=_AGENT_ROLES["compliance-gate"],
+        content=compliance_result["text"],
+        intent_tag=IntentTag.VALIDATE,
+    )
+    agent_metrics_list.append(compliance_result["metrics"])
 
-    for agent_name, intent_tag in specialist_sequence:
-        role = _AGENT_ROLES[agent_name]
-        await asyncio.sleep(STEP_DELAY)
-
-        # Announce delegation
-        await message_store.publish(
-            agent_name="supply-coordinator",
-            agent_role="Supply Coordinator",
-            content=f"Delegating to {role} ({agent_name}).",
-            intent_tag=IntentTag.PROPOSE,
-        )
-
-        # Build targeted, minimal context per agent
-        if agent_name == "supply-scanner":
-            specialist_msg = f"Scan closet_id={closet_id}. Call initiate_scan then analyze_scan."
-        elif agent_name == "catalog-sourcer":
-            below_par_skus = [i["sku"] for i in items_brief if i["qty"] < i["par"]]
-            specialist_msg = f"Look up vendors for these SKUs: {', '.join(below_par_skus)}."
-        elif agent_name == "compliance-gate":
-            critical_items = [i for i in items_brief if i["criticality"] == "CRITICAL" and i["qty"] < i["par"]]
-            specialist_msg = (
-                f"Closet: {closet_id}. Critical items below par: "
-                f"{json.dumps([{'name': i['name'], 'qty': i['qty'], 'par': i['par'], 'days': round(i['qty']/i['rate'],1)} for i in critical_items])}. "
-                f"Escalate if <2 days supply. Check for any POs needing approval."
-            )
-        elif agent_name == "order-manager":
-            specialist_msg = (
-                f"Create PO and complete the order lifecycle.\n"
-                f"scan_id={scan_id}\n"
-                f"vendor_id={recommended_vendor_id or 'VND-MEDLINE'}\n"
-                f"Call create_purchase_order, then submit_purchase_order, create_shipment, receive_shipment."
-            )
-        else:
-            specialist_msg = f"Execute your role for closet {closet_id}."
-
-        specialist_result = await _invoke_agent(agent_name, specialist_msg)
-        reply = specialist_result["text"]
-        agent_metrics_list.append(specialist_result["metrics"])
-        await message_store.publish(
-            agent_name=agent_name,
-            agent_role=role,
-            content=reply,
-            intent_tag=intent_tag,
-        )
-
-        # Extract key IDs from agent responses for downstream agents
-        if agent_name == "supply-scanner":
-            # Pull scan_id from state store (most reliable)
-            scans = state_store.get_scans()
-            if scans:
-                scan_id = scans[-1].id
-                logger.info("Extracted scan_id=%s from state store", scan_id)
-        elif agent_name == "catalog-sourcer":
-            # Pull recommended vendor from reply text or fall back
-            import re
-            vendor_match = re.search(r'(VND-[A-Z]+)', reply)
-            if vendor_match:
-                recommended_vendor_id = vendor_match.group(1)
-                logger.info("Extracted vendor_id=%s from catalog-sourcer reply", recommended_vendor_id)
+    # Step 4: Order Manager — single batch tool call
+    await asyncio.sleep(STEP_DELAY)
+    await message_store.publish(
+        agent_name="supply-coordinator",
+        agent_role="Supply Coordinator",
+        content="Delegating to Order Manager.",
+        intent_tag=IntentTag.PROPOSE,
+    )
+    order_msg = (
+        f"Complete the order lifecycle in one call.\n"
+        f"scan_id={scan_id}\n"
+        f"vendor_id={recommended_vendor_id or 'VND-MEDLINE'}\n"
+        f"Call complete_order_lifecycle with these parameters."
+    )
+    order_result = await _invoke_agent("order-manager", order_msg)
+    await message_store.publish(
+        agent_name="order-manager",
+        agent_role=_AGENT_ROLES["order-manager"],
+        content=order_result["text"],
+        intent_tag=IntentTag.EXECUTE,
+    )
+    agent_metrics_list.append(order_result["metrics"])
 
     # Final wrap-up from coordinator — compact summary request
     await asyncio.sleep(STEP_DELAY)
@@ -412,6 +456,9 @@ async def _run_live(
         content=final_reply,
         intent_tag=IntentTag.EXECUTE,
     )
+
+    # Close the shared credential
+    await shared_credential.close()
 
     scenario_metrics: ScenarioMetrics = {
         "total_latency_seconds": round(

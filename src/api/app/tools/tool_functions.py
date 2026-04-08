@@ -726,6 +726,171 @@ async def receive_shipment(
     }
 
 
+# ── Batch tools (perf‑optimised, reduces LLM round trips) ──────────
+
+async def lookup_vendor_catalog_batch(
+    item_skus: list[str],
+    *,
+    state_store: StateStore,
+    event_store: EventStore,
+    message_store: MessageStore,
+) -> dict:
+    """Look up vendor catalog entries for multiple item SKUs in one call."""
+    results = []
+    overall_recommended_vendor = None
+    vendor_counts: dict[str, int] = {}
+
+    for sku in item_skus:
+        entries = [
+            e for e in state_store.catalog.values()
+            if e.item_sku == sku
+        ]
+        if not entries:
+            results.append({"item_sku": sku, "ok": False,
+                           "error": "No catalog entries"})
+            continue
+
+        tier_rank = {ContractTier.GPO_CONTRACT: 0,
+                     ContractTier.PREFERRED: 1, ContractTier.SPOT_BUY: 2}
+        in_stock = [e for e in entries if e.stock_status ==
+                    VendorStockStatus.IN_STOCK]
+        recommended = None
+        if in_stock:
+            recommended = min(in_stock, key=lambda e: (
+                tier_rank.get(e.contract_tier, 9), e.unit_price))
+
+        await event_store.publish(
+            event_type=VENDOR_LOOKUP_COMPLETED,
+            entity_id=sku,
+            payload={
+                "item_sku": sku,
+                "entries_found": len(entries),
+                "recommended_vendor_id": recommended.vendor_id if recommended else None,
+            },
+        )
+
+        results.append({
+            "item_sku": sku,
+            "ok": True,
+            "entries_found": len(entries),
+            "recommended_vendor_id": recommended.vendor_id if recommended else None,
+            "recommended_unit_price": recommended.unit_price if recommended else None,
+        })
+        if recommended:
+            vendor_counts[recommended.vendor_id] = vendor_counts.get(
+                recommended.vendor_id, 0) + 1
+
+    if vendor_counts:
+        overall_recommended_vendor = max(vendor_counts, key=vendor_counts.get)
+
+    await message_store.publish(
+        agent_name="catalog-sourcer",
+        agent_role="Catalog Sourcer Agent",
+        content=f"Looked up {len(item_skus)} SKUs. Recommended vendor: {overall_recommended_vendor or 'none'}.",
+        intent_tag=IntentTag.PROPOSE,
+    )
+
+    return {
+        "ok": True,
+        "results": results,
+        "recommended_vendor_id": overall_recommended_vendor,
+    }
+
+
+async def complete_order_lifecycle(
+    scan_id: str,
+    vendor_id: str,
+    *,
+    state_store: StateStore,
+    event_store: EventStore,
+    message_store: MessageStore,
+) -> dict:
+    """Execute the full PO lifecycle: create → submit → ship → receive.
+
+    Combines create_purchase_order, submit_purchase_order, create_shipment,
+    and receive_shipment into a single tool call.  Stops early if the PO
+    requires human approval (≥$1000).
+    """
+    # Step 1: Create PO
+    create_result = await create_purchase_order(
+        scan_id=scan_id, vendor_id=vendor_id,
+        state_store=state_store, event_store=event_store,
+        message_store=message_store,
+    )
+    if not create_result.get("ok"):
+        return create_result
+
+    po_id = create_result["po_id"]
+
+    # If PO needs human approval, stop here
+    if create_result.get("requires_human_approval"):
+        return {
+            "ok": True,
+            "po_id": po_id,
+            "total_cost": create_result["total_cost"],
+            "state": "PENDING_APPROVAL",
+            "message": f"PO {po_id} requires human approval (>=$1000). Stopped.",
+        }
+
+    # Step 2: Submit PO
+    submit_result = await submit_purchase_order(
+        po_id=po_id,
+        state_store=state_store, event_store=event_store,
+        message_store=message_store,
+    )
+    if not submit_result.get("ok"):
+        return submit_result
+
+    # Step 3: Transition PO through CONFIRMED (required by state machine)
+    try:
+        await state_store.transition_purchase_order(po_id, POState.CONFIRMED)
+    except Exception:
+        pass
+
+    # Step 4: Create shipment
+    vendor = state_store.get_vendor(vendor_id)
+    carrier = f"{vendor.name} Logistics" if vendor else "Standard Carrier"
+    ship_result = await create_shipment(
+        po_id=po_id, carrier=carrier,
+        state_store=state_store, event_store=event_store,
+        message_store=message_store,
+    )
+    if not ship_result.get("ok"):
+        return ship_result
+
+    shipment_id = ship_result["shipment_id"]
+
+    # Step 5: Transition shipment through SHIPPED → IN_TRANSIT before DELIVERED
+    try:
+        await state_store.transition_shipment(shipment_id, ShipmentState.SHIPPED)
+    except Exception:
+        pass
+    try:
+        await state_store.transition_shipment(shipment_id, ShipmentState.IN_TRANSIT)
+    except Exception:
+        pass
+
+    # Step 6: Receive shipment
+    receive_result = await receive_shipment(
+        shipment_id=shipment_id,
+        state_store=state_store, event_store=event_store,
+        message_store=message_store,
+    )
+    if not receive_result.get("ok"):
+        return receive_result
+
+    return {
+        "ok": True,
+        "po_id": po_id,
+        "total_cost": create_result["total_cost"],
+        "shipment_id": shipment_id,
+        "tracking_number": ship_result.get("tracking_number"),
+        "items_restocked": receive_result.get("items_restocked", 0),
+        "state": "RECEIVED",
+        "message": f"PO {po_id} complete: created, submitted, shipped, received.",
+    }
+
+
 # ── Generic event emission ──────────────────────────────────────────
 
 async def publish_event(
