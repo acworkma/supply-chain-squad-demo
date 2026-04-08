@@ -81,7 +81,7 @@ def _load_prompt(agent_name: str) -> str:
 
 # ── Helpers ─────────────────────────────────────────────────────────
 
-STEP_DELAY = 0.35  # seconds between simulated steps for realistic SSE pacing
+STEP_DELAY = 0.15  # seconds between simulated steps for realistic SSE pacing
 
 
 async def _call_tool(
@@ -165,10 +165,12 @@ async def _run_live(
 
     from ..tools.tool_schemas import AGENT_TOOLS
 
-    logger.info("_run_live started: scenario=%s, endpoint=%s", scenario_type, settings.effective_endpoint[:60] if settings.effective_endpoint else "NONE")
+    logger.info("_run_live started: scenario=%s, endpoint=%s", scenario_type,
+                settings.effective_endpoint[:60] if settings.effective_endpoint else "NONE")
     mi_client_id = os.environ.get("AZURE_CLIENT_ID")
     if mi_client_id:
-        logger.info("Using managed identity: AZURE_CLIENT_ID=%s", mi_client_id[:12] + "...")
+        logger.info("Using managed identity: AZURE_CLIENT_ID=%s",
+                    mi_client_id[:12] + "...")
 
     # Read effective config from runtime config store (falls back to env vars)
     from ..config_store import runtime_config
@@ -295,27 +297,21 @@ async def _run_live(
     if not closet:
         return {"ok": False, "error": f"Closet {closet_id} not found"}
 
+    # Compact state: just the essentials, no indent to reduce tokens
+    items_brief = [
+        {"id": i.id, "sku": i.sku, "name": i.name, "qty": i.current_quantity,
+         "par": i.par_level, "criticality": i.criticality.value,
+         "rate": i.consumption_rate_per_day}
+        for i in closet_items
+    ]
     state_snapshot = json.dumps(
-        {
-            "closet": closet.model_dump(mode="json"),
-            "items": [i.model_dump(mode="json") for i in closet_items],
-            "scans": [
-                s.model_dump(mode="json")
-                for s in state_store.get_scans()
-            ],
-        },
-        indent=2,
+        {"closet_id": closet_id, "name": closet.name, "unit": closet.unit, "items": items_brief},
     )
 
     initial_msg = (
-        f"Supply closet {closet.name} ({closet_id}) needs replenishment assessment. "
-        f"Scenario type: {scenario_type}.\n\n"
-        f"Current state:\n{state_snapshot}\n\n"
-        f"Coordinate the full replenishment workflow. For each step, describe "
-        f"what you are doing and use the tools available to you. "
-        f"After your initial assessment, I will invoke the specialist agents "
-        f"(supply-scanner, catalog-sourcer, compliance-gate, order-manager) "
-        f"on your behalf. Tell me which agent to invoke next and what to ask them."
+        f"Replenishment assessment needed: {closet.name} ({closet_id}), {scenario_type}.\n"
+        f"State: {state_snapshot}\n"
+        f"Briefly assess urgency. Specialists will be invoked in sequence after you."
     )
 
     # Step 1: Supply Coordinator starts
@@ -329,19 +325,17 @@ async def _run_live(
         intent_tag=IntentTag.PROPOSE,
     )
 
-    # Step 2: Invoke specialist agents in sequence
+    # Step 2: Invoke specialist agents in sequence with targeted context
+    # Track key IDs produced by earlier agents for downstream use
+    scan_id = None
+    recommended_vendor_id = None
+
     specialist_sequence = [
         ("supply-scanner", IntentTag.EXECUTE),
         ("catalog-sourcer", IntentTag.PROPOSE),
         ("compliance-gate", IntentTag.VALIDATE),
         ("order-manager", IntentTag.EXECUTE),
     ]
-
-    context = (
-        f"Closet: {closet.name} ({closet_id}), "
-        f"Unit: {closet.unit}, Floor: {closet.floor}. "
-        f"Scenario: {scenario_type}."
-    )
 
     for agent_name, intent_tag in specialist_sequence:
         role = _AGENT_ROLES[agent_name]
@@ -355,11 +349,28 @@ async def _run_live(
             intent_tag=IntentTag.PROPOSE,
         )
 
-        specialist_msg = (
-            f"{context}\n\n"
-            f"Supply Coordinator says: {coordinator_reply}\n\n"
-            f"Execute your role. Use your tools to take action."
-        )
+        # Build targeted, minimal context per agent
+        if agent_name == "supply-scanner":
+            specialist_msg = f"Scan closet_id={closet_id}. Call initiate_scan then analyze_scan."
+        elif agent_name == "catalog-sourcer":
+            below_par_skus = [i["sku"] for i in items_brief if i["qty"] < i["par"]]
+            specialist_msg = f"Look up vendors for these SKUs: {', '.join(below_par_skus)}."
+        elif agent_name == "compliance-gate":
+            critical_items = [i for i in items_brief if i["criticality"] == "CRITICAL" and i["qty"] < i["par"]]
+            specialist_msg = (
+                f"Closet: {closet_id}. Critical items below par: "
+                f"{json.dumps([{'name': i['name'], 'qty': i['qty'], 'par': i['par'], 'days': round(i['qty']/i['rate'],1)} for i in critical_items])}. "
+                f"Escalate if <2 days supply. Check for any POs needing approval."
+            )
+        elif agent_name == "order-manager":
+            specialist_msg = (
+                f"Create PO and complete the order lifecycle.\n"
+                f"scan_id={scan_id}\n"
+                f"vendor_id={recommended_vendor_id or 'VND-MEDLINE'}\n"
+                f"Call create_purchase_order, then submit_purchase_order, create_shipment, receive_shipment."
+            )
+        else:
+            specialist_msg = f"Execute your role for closet {closet_id}."
 
         specialist_result = await _invoke_agent(agent_name, specialist_msg)
         reply = specialist_result["text"]
@@ -371,14 +382,26 @@ async def _run_live(
             intent_tag=intent_tag,
         )
 
-        # Feed specialist reply back for context
-        context += f"\n\n{role} responded: {reply}"
+        # Extract key IDs from agent responses for downstream agents
+        if agent_name == "supply-scanner":
+            # Pull scan_id from state store (most reliable)
+            scans = state_store.get_scans()
+            if scans:
+                scan_id = scans[-1].id
+                logger.info("Extracted scan_id=%s from state store", scan_id)
+        elif agent_name == "catalog-sourcer":
+            # Pull recommended vendor from reply text or fall back
+            import re
+            vendor_match = re.search(r'(VND-[A-Z]+)', reply)
+            if vendor_match:
+                recommended_vendor_id = vendor_match.group(1)
+                logger.info("Extracted vendor_id=%s from catalog-sourcer reply", recommended_vendor_id)
 
-    # Final wrap-up from coordinator
+    # Final wrap-up from coordinator — compact summary request
     await asyncio.sleep(STEP_DELAY)
     wrapup_msg = (
-        f"All specialist agents have completed their work.\n\n{context}\n\n"
-        f"Summarize the outcome of this replenishment workflow."
+        f"Workflow complete for {closet.name} ({closet_id}). "
+        f"Scan: {scan_id}. Summarize outcome in under 50 words."
     )
     final_result = await _invoke_agent("supply-coordinator", wrapup_msg)
     final_reply = final_result["text"]

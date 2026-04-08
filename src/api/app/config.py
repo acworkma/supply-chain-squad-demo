@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     MODEL_DEPLOYMENT_NAME: str = "gpt-4.1"
 
     # Maximum output tokens per agent response (controls verbosity)
-    MAX_OUTPUT_TOKENS: int = 1024
+    MAX_OUTPUT_TOKENS: int = 512
 
     # Per-agent model overrides — JSON string from env var
     # Example: '{"supply-scanner":"gpt-5-mini","order-manager":"gpt-5-mini"}'
