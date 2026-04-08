@@ -157,7 +157,7 @@ async def _run_live(
     the configured model deployment with the ``instructions`` and ``tools``
     parameters customised per agent.
     """
-    from agent_framework import Message
+    from agent_framework import FunctionTool, Message
     from agent_framework.foundry import FoundryChatClient
     from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
@@ -179,6 +179,35 @@ async def _run_live(
         host, sub_id, rg, project = parts
         effective_endpoint = f"https://{host}/api/projects/{project}"
 
+    def _build_function_tools(agent_name: str) -> list[FunctionTool]:
+        """Build FunctionTool objects for an agent with stores bound via closures."""
+        agent_tool_schemas = AGENT_TOOLS.get(agent_name, [])
+        tools: list[FunctionTool] = []
+        for schema in agent_tool_schemas:
+            fn_def = schema["function"]
+            tool_name = fn_def["name"]
+            dispatch_fn = TOOL_DISPATCH.get(tool_name)
+            if dispatch_fn is None:
+                continue
+
+            # Closure capturing dispatch_fn and the stores
+            async def _bound(*, _fn=dispatch_fn, **kwargs):
+                return await _fn(
+                    **kwargs,
+                    state_store=state_store,
+                    event_store=event_store,
+                    message_store=message_store,
+                )
+
+            tool = FunctionTool(
+                name=tool_name,
+                description=fn_def.get("description", ""),
+                func=_bound,
+                input_model=fn_def.get("parameters", {}),
+            )
+            tools.append(tool)
+        return tools
+
     async def _invoke_agent(agent_name: str, user_message: str) -> dict:
         """Invoke an agent via the Agent Framework with its prompt and tools.
 
@@ -194,6 +223,7 @@ async def _run_live(
             agent_name) or default_max_tokens
 
         agent_instructions = _load_prompt(agent_name)
+        agent_tools = _build_function_tools(agent_name)
 
         credential = AsyncDefaultAzureCredential()
 
@@ -203,10 +233,17 @@ async def _run_live(
                 model=deployment,
                 credential=credential,
             )
-            response = await client.get_response([
-                Message(role="system", contents=[agent_instructions]),
-                Message(role="user", contents=[user_message]),
-            ])
+            options = {
+                "tools": agent_tools,
+                "max_tokens": resolved_max_tokens,
+            }
+            response = await client.get_response(
+                [
+                    Message(role="system", contents=[agent_instructions]),
+                    Message(role="user", contents=[user_message]),
+                ],
+                options=options,
+            )
             text = response.text if hasattr(
                 response, 'text') else str(response)
 
