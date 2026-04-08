@@ -14,7 +14,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
+import traceback
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -163,6 +165,11 @@ async def _run_live(
 
     from ..tools.tool_schemas import AGENT_TOOLS
 
+    logger.info("_run_live started: scenario=%s, endpoint=%s", scenario_type, settings.effective_endpoint[:60] if settings.effective_endpoint else "NONE")
+    mi_client_id = os.environ.get("AZURE_CLIENT_ID")
+    if mi_client_id:
+        logger.info("Using managed identity: AZURE_CLIENT_ID=%s", mi_client_id[:12] + "...")
+
     # Read effective config from runtime config store (falls back to env vars)
     from ..config_store import runtime_config
 
@@ -225,7 +232,11 @@ async def _run_live(
         agent_instructions = _load_prompt(agent_name)
         agent_tools = _build_function_tools(agent_name)
 
-        credential = AsyncDefaultAzureCredential()
+        # Use AZURE_CLIENT_ID for user-assigned managed identity in Container Apps
+        mi_client_id = os.environ.get("AZURE_CLIENT_ID")
+        credential = AsyncDefaultAzureCredential(
+            managed_identity_client_id=mi_client_id,
+        ) if mi_client_id else AsyncDefaultAzureCredential()
 
         try:
             client = FoundryChatClient(

@@ -87,6 +87,8 @@ async def run_routine_restock(background_tasks: BackgroundTasks):
                     await metrics_store.record(result["metrics"])
             except Exception:
                 logger.exception("routine-restock failed")
+                import traceback
+                traceback.print_exc()
 
     background_tasks.add_task(_run)
     return JSONResponse(
@@ -138,6 +140,8 @@ async def run_critical_shortage(background_tasks: BackgroundTasks):
                     await metrics_store.record(result["metrics"])
             except Exception:
                 logger.exception("critical-shortage failed")
+                import traceback
+                traceback.print_exc()
 
     background_tasks.add_task(_run)
     return JSONResponse(

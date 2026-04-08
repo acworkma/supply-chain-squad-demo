@@ -183,6 +183,8 @@ async def start_workflow(body: StartWorkflowRequest, background_tasks: Backgroun
                     await metrics_store.record(result["metrics"])
             except Exception:
                 logger.exception("%s failed", body.scenario_type)
+                import traceback
+                traceback.print_exc()
 
     background_tasks.add_task(_run)
     return JSONResponse(
