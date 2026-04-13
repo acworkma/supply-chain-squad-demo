@@ -17,7 +17,7 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings",
     "sse-starlette",
-    "cryptography>=45.0",
+    "cryptography>=46.0.7",
 ]
 
 [project.optional-dependencies]
