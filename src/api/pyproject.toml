@@ -12,11 +12,12 @@ dependencies = [
     "uvicorn[standard]",
     "agent-framework-foundry==1.0.0",
     "azure-monitor-opentelemetry>=1.6.0",
-    "azure-identity",
+    "azure-identity>=1.21.0",
     "aiohttp",
     "pydantic>=2.0",
     "pydantic-settings",
     "sse-starlette",
+    "cryptography>=45.0",
 ]
 
 [project.optional-dependencies]
