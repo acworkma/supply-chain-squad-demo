@@ -11,7 +11,7 @@ dependencies = [
     "fastapi[standard]",
     "uvicorn[standard]",
     "agent-framework-foundry==1.0.0",
-    "azure-monitor-opentelemetry>=1.6.0",
+    "azure-monitor-opentelemetry>=1.8.7",
     "azure-identity>=1.21.0",
     "aiohttp",
     "pydantic>=2.0",
