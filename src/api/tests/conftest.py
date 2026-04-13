@@ -205,20 +205,20 @@ def sample_shipments() -> list[Shipment]:
 @pytest.fixture
 def auto_approve_critical_shortage(monkeypatch):
     """Reduce approval wait timeout for tests to prevent indefinite hangs.
-    
+
     Critical shortage scenarios wait for human approval. In tests, there's no human.
     This reduces the wait timeout to 1 second so tests complete quickly.
     """
     # Monkeypatch the max wait time to something very short (1 second)
     # This prevents indefinite hangs while still allowing the scenario to complete
     import sys
-    
+
     # Set pytest mode flag by marking it in modules
     import app.agents.orchestrator as orch_module
     orch_module._PYTEST_MODE = True
-    
+
     yield
-    
+
     # Cleanup
     orch_module._PYTEST_MODE = False
 
@@ -247,7 +247,7 @@ async def test_client(auto_approve_critical_shortage, monkeypatch):
 
     # Create a wrapper for state_store.get_purchase_order to auto-approve for tests
     original_get_po = singleton_state_store.get_purchase_order
-    
+
     async def get_purchase_order_with_auto_approval(po_id: str):
         po = original_get_po(po_id)
         # Auto-approve PENDING_APPROVAL POs created by critical shortage scenarios
@@ -257,22 +257,23 @@ async def test_client(auto_approve_critical_shortage, monkeypatch):
             from app.models.events import PO_AUTO_APPROVED
             from app.models.enums import POApprovalStatus, IntentTag
             from datetime import datetime, timezone
-            
+
             # Transition the PO state to APPROVED
             await singleton_state_store.transition_purchase_order(po_id, POState.APPROVED)
             po.state = POState.APPROVED
             po.approval_status = POApprovalStatus.AUTO_APPROVED
             po.approval_note = "[AUTO-APPROVED FOR TESTING]"
             po.approved_at = datetime.now(timezone.utc)
-            
+
             # Emit the PO_AUTO_APPROVED event
             event = await singleton_event_store.publish(
                 event_type=PO_AUTO_APPROVED,
                 entity_id=po_id,
                 payload={"po_id": po_id},
-                state_diff={"from_state": "PENDING_APPROVAL", "to_state": "APPROVED"},
+                state_diff={"from_state": "PENDING_APPROVAL",
+                            "to_state": "APPROVED"},
             )
-            
+
             # Publish a message about the auto-approval
             await singleton_message_store.publish(
                 agent_name="compliance-gate",
@@ -281,13 +282,13 @@ async def test_client(auto_approve_critical_shortage, monkeypatch):
                 intent_tag=IntentTag.EXECUTE,
                 related_event_ids=[event.id],
             )
-        
+
         return po
-    
+
     # Monkeypatch get_purchase_order - but it's now async, so we need to handle that differently
     # Actually, the original get_purchase_order is NOT async, so we can't await in a sync function
     # Let me use a different approach: monkeypatch during the call instead
-    
+
     # Use a context variable approach or patch the orchestrator to not wait
     # in test mode. Actually, simpler: just patch at module level
     pass

@@ -1044,21 +1044,22 @@ async def _simulate_critical_shortage(
             from ..models.enums import POApprovalStatus
             from ..models.events import PO_AUTO_APPROVED
             from datetime import datetime, timezone
-            
+
             await state_store.transition_purchase_order(po_id, POState.APPROVED)
             po.state = POState.APPROVED
             po.approval_status = POApprovalStatus.AUTO_APPROVED
             po.approval_note = "[AUTO-APPROVED IN TEST MODE]"
             po.approved_at = datetime.now(timezone.utc)
-            
+
             # Emit the auto-approval event
             event = await event_store.publish(
                 event_type=PO_AUTO_APPROVED,
                 entity_id=po_id,
                 payload={"po_id": po_id},
-                state_diff={"from_state": "PENDING_APPROVAL", "to_state": "APPROVED"},
+                state_diff={"from_state": "PENDING_APPROVAL",
+                            "to_state": "APPROVED"},
             )
-            
+
             await message_store.publish(
                 agent_name="compliance-gate",
                 agent_role="Compliance Gate Agent",
