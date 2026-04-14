@@ -18,15 +18,15 @@ from app.state import store
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["scenarios"])
 
-# Mutex to prevent concurrent scenario runs (ADR-007)
-_scenario_lock = asyncio.Lock()
+# Shared mutex to prevent concurrent scenario runs (ADR-007)
+from app.routers._lock import scenario_lock as _scenario_lock
 
 
-async def _wait_for_lock_release(timeout: float = 3.0) -> bool:
+async def _wait_for_lock_release(timeout: float = 10.0) -> bool:
     """After signaling an in-flight task, wait briefly for the lock to release."""
     if not _scenario_lock.locked():
         return True
-    interval = 0.1
+    interval = 0.25
     waited = 0.0
     while waited < timeout:
         await asyncio.sleep(interval)

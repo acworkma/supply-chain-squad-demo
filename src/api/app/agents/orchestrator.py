@@ -254,34 +254,51 @@ async def _run_live(
         agent_instructions = _load_prompt(agent_name)
         agent_tools = _build_function_tools(agent_name)
 
-        try:
-            client = FoundryChatClient(
-                project_endpoint=effective_endpoint,
-                model=deployment,
-                credential=shared_credential,
-            )
-            options = {
-                "tools": agent_tools,
-                "max_tokens": resolved_max_tokens,
-            }
-            response = await client.get_response(
-                [
-                    Message(role="system", contents=[agent_instructions]),
-                    Message(role="user", contents=[user_message]),
-                ],
-                options=options,
-            )
-            text = response.text if hasattr(
-                response, 'text') else str(response)
+        max_attempts = 3
+        last_err: Exception | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                client = FoundryChatClient(
+                    project_endpoint=effective_endpoint,
+                    model=deployment,
+                    credential=shared_credential,
+                )
+                options = {
+                    "tools": agent_tools,
+                    "max_tokens": resolved_max_tokens,
+                }
+                response = await client.get_response(
+                    [
+                        Message(role="system", contents=[agent_instructions]),
+                        Message(role="user", contents=[user_message]),
+                    ],
+                    options=options,
+                )
+                text = response.text if hasattr(
+                    response, 'text') else str(response)
 
-            # Extract metrics if available
-            if hasattr(response, 'usage') and response.usage:
-                total_input_tokens = getattr(response.usage, 'input_tokens', 0)
-                total_output_tokens = getattr(
-                    response.usage, 'output_tokens', 0)
-            rounds = 1
-        except Exception:
-            raise
+                # Extract metrics if available
+                if hasattr(response, 'usage') and response.usage:
+                    total_input_tokens = getattr(response.usage, 'input_tokens', 0)
+                    total_output_tokens = getattr(
+                        response.usage, 'output_tokens', 0)
+                rounds = 1
+                last_err = None
+                break
+            except Exception as exc:
+                last_err = exc
+                # Only retry on transient timeout / connection errors
+                exc_name = type(exc).__name__
+                is_transient = "Timeout" in exc_name or "Connect" in exc_name
+                if is_transient and attempt < max_attempts:
+                    wait = 2 ** attempt  # 2s, 4s
+                    logger.warning(
+                        "agent=%s attempt %d/%d failed (%s), retrying in %ds",
+                        agent_name, attempt, max_attempts, exc_name, wait,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                raise
 
         latency = time.monotonic() - start
         metrics: AgentMetrics = {
