@@ -13,6 +13,10 @@ from app.routers import approval, config, events, messages, metrics, scenarios, 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown hooks."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     # Initialize OpenTelemetry if App Insights connection string is available
     from app.config import settings as app_settings
 
@@ -30,6 +34,41 @@ async def lifespan(app: FastAPI):
         configure_otel_providers(enable_sensitive_data=False)
     except ImportError:
         pass  # Agent Framework not installed (dev mode)
+
+    # Log the agent registry mode so it's visible in startup logs.
+    logger.info(
+        "agent_registry_mode=%s name_prefix=%r",
+        app_settings.AGENT_REGISTRY_MODE,
+        app_settings.AGENT_NAME_PREFIX,
+    )
+
+    # In persistent mode, resolve agent versions once at startup so a missing
+    # registration fails loudly here (not on first scenario run).
+    if (
+        app_settings.AGENT_REGISTRY_MODE.lower() == "persistent"
+        and app_settings.effective_endpoint
+    ):
+        try:
+            from azure.identity.aio import DefaultAzureCredential
+
+            from app.agents.registry import AGENT_NAMES, resolve_agent_versions
+
+            prefix = app_settings.AGENT_NAME_PREFIX or ""
+            names = [f"{prefix}{n}" for n in AGENT_NAMES]
+            credential = DefaultAzureCredential()
+            try:
+                versions = await resolve_agent_versions(
+                    endpoint=app_settings.effective_endpoint,
+                    credential=credential,
+                    agent_names=names,
+                )
+                logger.info("Resolved persistent agent versions at startup: %s", versions)
+            finally:
+                await credential.close()
+        except Exception as exc:
+            # Don't crash the app — log and continue. The orchestrator will
+            # re-attempt resolution on the first scenario request.
+            logger.warning("Could not pre-resolve agent versions at startup: %s", exc)
 
     from app.state import store
 

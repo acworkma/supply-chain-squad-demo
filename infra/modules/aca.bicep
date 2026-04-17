@@ -71,8 +71,13 @@ resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 }
 
 // --- RBAC: Cognitive Services User for the managed identity ---
-// Uses Microsoft.CognitiveServices/* wildcard which covers OpenAI,
-// AIServices/agents/write, and all Foundry data actions.
+// Covers runtime data-plane access:
+//   - OpenAI chat completions / inference
+//   - Read persistent Foundry agents (agents/list, agents/list_versions)
+//   - Invoke persistent prompt agents via FoundryAgent
+// NOTE: Creating/updating agents (scripts/build_agents.py) uses the azd caller
+// identity (user or service principal running `azd up`), not this managed
+// identity, so elevated write roles are not required here.
 resource cognitiveServicesRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(aiServicesId, uami.id, cognitiveServicesUserRoleId)
   scope: aiServicesResource

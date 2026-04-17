@@ -160,18 +160,28 @@ async def _run_live(
 ) -> dict:
     """Run orchestration using the Agent Framework with per-agent instructions.
 
-    Each agent is defined by its system prompt and tool set.  All calls use
-    the configured model deployment with the ``instructions`` and ``tools``
-    parameters customised per agent.
+    Two execution modes controlled by ``settings.AGENT_REGISTRY_MODE``:
+
+    * ``persistent`` (default) — Invokes persistent Foundry agents registered
+      via ``scripts/build_agents.py`` (instructions + model + tool schemas
+      live in Foundry). The orchestrator still supplies function callables
+      locally for client-side tool execution.
+    * ``ephemeral`` — Legacy path: instructions and tools are passed inline
+      each request via ``FoundryChatClient``. Kept for local dev / fallback.
     """
     from agent_framework import FunctionTool, Message
-    from agent_framework.foundry import FoundryChatClient
+    from agent_framework.foundry import FoundryAgent, FoundryChatClient
     from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
     from ..tools.tool_schemas import AGENT_TOOLS
 
-    logger.info("_run_live started: scenario=%s, endpoint=%s", scenario_type,
-                settings.effective_endpoint[:60] if settings.effective_endpoint else "NONE")
+    use_persistent = settings.AGENT_REGISTRY_MODE.lower() == "persistent"
+    logger.info(
+        "_run_live started: scenario=%s, mode=%s, endpoint=%s",
+        scenario_type,
+        "persistent" if use_persistent else "ephemeral",
+        settings.effective_endpoint[:60] if settings.effective_endpoint else "NONE",
+    )
     mi_client_id = os.environ.get("AZURE_CLIENT_ID")
     if mi_client_id:
         logger.info("Using managed identity: AZURE_CLIENT_ID=%s",
@@ -192,6 +202,25 @@ async def _run_live(
         parts = settings.PROJECT_CONNECTION_STRING.split(";")
         host, sub_id, rg, project = parts
         effective_endpoint = f"https://{host}/api/projects/{project}"
+
+    # Resolve agent name prefix + version map for persistent mode.
+    name_prefix = settings.AGENT_NAME_PREFIX or ""
+
+    def _apply_prefix(agent_name: str) -> str:
+        return f"{name_prefix}{agent_name}" if name_prefix else agent_name
+
+    version_overrides: dict[str, str] = {}
+    if use_persistent and settings.AGENT_VERSION_OVERRIDES.strip():
+        try:
+            version_overrides = json.loads(settings.AGENT_VERSION_OVERRIDES)
+        except json.JSONDecodeError:
+            logger.warning(
+                "Invalid AGENT_VERSION_OVERRIDES JSON; ignoring: %s",
+                settings.AGENT_VERSION_OVERRIDES,
+            )
+
+    # Lazily-resolved ``{name: version}`` cache for the persistent path.
+    resolved_versions: dict[str, str] | None = None
 
     def _build_function_tools(agent_name: str) -> list[FunctionTool]:
         """Build FunctionTool objects for an agent with stores bound via closures."""
@@ -237,8 +266,27 @@ async def _run_live(
         managed_identity_client_id=mi_client_id,
     ) if mi_client_id else AsyncDefaultAzureCredential()
 
+    async def _ensure_versions_resolved() -> dict[str, str]:
+        """Lazily resolve ``{agent_name: latest_version}`` for persistent mode."""
+        nonlocal resolved_versions
+        if resolved_versions is not None:
+            return resolved_versions
+        from .registry import resolve_agent_versions
+
+        prefixed_names = [_apply_prefix(n) for n in _AGENT_NAMES]
+        resolved_versions = await resolve_agent_versions(
+            endpoint=effective_endpoint,
+            credential=shared_credential,
+            agent_names=prefixed_names,
+        )
+        # Apply version overrides (unprefixed → resolve prefixed key).
+        for unprefixed_name, override_version in version_overrides.items():
+            resolved_versions[_apply_prefix(unprefixed_name)] = str(override_version)
+        logger.info("Resolved persistent agent versions: %s", resolved_versions)
+        return resolved_versions
+
     async def _invoke_agent(agent_name: str, user_message: str) -> dict:
-        """Invoke an agent via the Agent Framework with its prompt and tools.
+        """Invoke an agent via the Agent Framework.
 
         Returns a dict with ``text`` (the agent's reply) and ``metrics``.
         """
@@ -250,38 +298,58 @@ async def _run_live(
         deployment = _model_overrides.get(agent_name) or default_deployment
         resolved_max_tokens = _token_overrides.get(
             agent_name) or _AGENT_TOKEN_DEFAULTS.get(agent_name, default_max_tokens)
-
-        agent_instructions = _load_prompt(agent_name)
         agent_tools = _build_function_tools(agent_name)
+        text = ""
 
         max_attempts = 3
         last_err: Exception | None = None
         for attempt in range(1, max_attempts + 1):
             try:
-                client = FoundryChatClient(
-                    project_endpoint=effective_endpoint,
-                    model=deployment,
-                    credential=shared_credential,
-                )
-                options = {
-                    "tools": agent_tools,
-                    "max_tokens": resolved_max_tokens,
-                }
-                response = await client.get_response(
-                    [
-                        Message(role="system", contents=[agent_instructions]),
-                        Message(role="user", contents=[user_message]),
-                    ],
-                    options=options,
-                )
-                text = response.text if hasattr(
-                    response, 'text') else str(response)
+                if use_persistent:
+                    # Persistent agent: instructions + tool schemas live in
+                    # Foundry; we only supply the callable tools for
+                    # client-side execution.
+                    versions = await _ensure_versions_resolved()
+                    prefixed = _apply_prefix(agent_name)
+                    agent = FoundryAgent(
+                        project_endpoint=effective_endpoint,
+                        agent_name=prefixed,
+                        agent_version=versions[prefixed],
+                        credential=shared_credential,
+                        tools=agent_tools,
+                    )
+                    response = await agent.run(
+                        [Message(role="user", contents=[user_message])],
+                        options={"max_tokens": resolved_max_tokens},
+                    )
+                    text = response.text if hasattr(response, "text") else str(response)
+                    usage = getattr(response, "usage", None)
+                    if usage:
+                        total_input_tokens = getattr(usage, "input_tokens", 0)
+                        total_output_tokens = getattr(usage, "output_tokens", 0)
+                else:
+                    # Ephemeral (legacy) path: inline instructions + tools.
+                    agent_instructions = _load_prompt(agent_name)
+                    client = FoundryChatClient(
+                        project_endpoint=effective_endpoint,
+                        model=deployment,
+                        credential=shared_credential,
+                    )
+                    response = await client.get_response(
+                        [
+                            Message(role="system", contents=[agent_instructions]),
+                            Message(role="user", contents=[user_message]),
+                        ],
+                        options={
+                            "tools": agent_tools,
+                            "max_tokens": resolved_max_tokens,
+                        },
+                    )
+                    text = response.text if hasattr(response, "text") else str(response)
+                    if hasattr(response, "usage") and response.usage:
+                        total_input_tokens = getattr(response.usage, "input_tokens", 0)
+                        total_output_tokens = getattr(response.usage, "output_tokens", 0)
 
-                # Extract metrics if available
-                if hasattr(response, 'usage') and response.usage:
-                    total_input_tokens = getattr(response.usage, 'input_tokens', 0)
-                    total_output_tokens = getattr(
-                        response.usage, 'output_tokens', 0)
                 rounds = 1
                 last_err = None
                 break

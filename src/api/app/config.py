@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     # Example: '{"supply-coordinator":2048,"supply-scanner":512}'
     AGENT_MAX_TOKENS_OVERRIDES: str = "{}"
 
+    # --- Persistent agent registry (ADR-005) ---
+    # "persistent" → invoke persistent Foundry agents registered via
+    # scripts/build_agents.py. "ephemeral" → legacy in-line instructions via
+    # FoundryChatClient (kept for local dev / fallback).
+    AGENT_REGISTRY_MODE: str = "persistent"
+
+    # Optional prefix applied to every agent name at registration and lookup
+    # time (useful for multi-environment isolation, e.g. "dev-").
+    AGENT_NAME_PREFIX: str = ""
+
+    # Optional JSON mapping of agent_name → pinned version (overrides the
+    # "latest version" lookup). Example: '{"supply-scanner":"3"}'.
+    AGENT_VERSION_OVERRIDES: str = "{}"
+
     # Azure Monitor / Application Insights connection string for OTel
     APPLICATIONINSIGHTS_CONNECTION_STRING: str = ""
 
