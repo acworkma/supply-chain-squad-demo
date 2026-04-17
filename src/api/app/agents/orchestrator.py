@@ -171,9 +171,27 @@ async def _run_live(
     """
     from agent_framework import FunctionTool, Message
     from agent_framework.foundry import FoundryAgent, FoundryChatClient
+    from agent_framework_foundry._agent import _FoundryAgentChatClient
     from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
     from ..tools.tool_schemas import AGENT_TOOLS
+
+    class _PersistentAgentChatClient(_FoundryAgentChatClient):
+        """Foundry chat client for persistent agents.
+
+        The Foundry Responses API rejects ``tools`` in the request body when
+        ``agent_reference`` is set (the agent's tool schemas already live on
+        the server). The upstream SDK still serialises ``tools`` into the
+        request, so we strip them here. Tool callables remain available to
+        the ``FunctionInvocationLayer`` for client-side execution when the
+        server returns ``tool_calls``.
+        """
+
+        async def _prepare_options(self, messages, options, **kwargs):
+            run_options = await super()._prepare_options(messages, options, **kwargs)
+            run_options.pop("tools", None)
+            run_options.pop("tool_choice", None)
+            return run_options
 
     use_persistent = settings.AGENT_REGISTRY_MODE.lower() == "persistent"
     logger.info(
@@ -317,6 +335,7 @@ async def _run_live(
                         agent_version=versions[prefixed],
                         credential=shared_credential,
                         tools=agent_tools,
+                        client_type=_PersistentAgentChatClient,
                     )
                     response = await agent.run(
                         [Message(role="user", contents=[user_message])],
