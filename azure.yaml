@@ -16,3 +16,13 @@ hooks:
       pip install azure-identity aiohttp "agent-framework-foundry==1.0.0" "azure-ai-projects>=2.0.0"
       python scripts/build_agents.py
     continueOnError: false
+  postdeploy:
+    shell: sh
+    run: |
+      # Reclaim disk space left behind by `azd deploy` image builds.
+      # Removes dangling images and build-cache entries older than 24h.
+      if command -v docker >/dev/null 2>&1; then
+        docker image prune -f || true
+        docker builder prune -f --filter "until=24h" || true
+      fi
+    continueOnError: true
