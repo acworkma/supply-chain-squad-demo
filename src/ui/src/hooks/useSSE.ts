@@ -13,7 +13,7 @@ export function useSSE<T>(url: string): SSEResult<T> {
   const [items, setItems] = useState<T[]>([]);
   const [connected, setConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mountedRef = useRef(true);
 
   const connect = useCallback(() => {
