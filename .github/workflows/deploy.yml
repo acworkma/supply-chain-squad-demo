@@ -9,6 +9,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: deploy-to-azure-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
