@@ -139,6 +139,84 @@ async def main() -> None:
         sys.exit(1)
     print(f"\n✅ All {len(results)} agents registered in Foundry.")
 
+    await _bootstrap_evals(endpoint=endpoint, model=model, agent_names=[r.agent_name for r in results])
+
+
+async def _bootstrap_evals(*, endpoint: str, model: str, agent_names: list[str]) -> None:
+    """Launch one Foundry evaluation run per agent against a portal-authored eval template.
+
+    Soft-fails: a broken eval run must never block agent registration success.
+    Controlled by env vars:
+        FOUNDRY_EVAL_ID           — eval template id (required; skipped if unset)
+        FOUNDRY_BOOTSTRAP_EVALS   — set to "false" to opt out
+        FOUNDRY_EVAL_SAMPLES      — samples per run (default 15)
+        FOUNDRY_EVAL_AGENT_VERSION — agent version to target (default "1")
+    """
+    # Import lazily so registration still works if evals_runner has a bug.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        from evals_runner import (  # type: ignore[import-not-found]
+            bootstrap_enabled,
+            resolve_eval_id,
+            trigger_runs,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"\n⚠️  Skipping eval bootstrap (import failed): {exc}")
+        return
+
+    if not bootstrap_enabled():
+        print("\nℹ️  Eval bootstrap disabled (FOUNDRY_BOOTSTRAP_EVALS=false).")
+        return
+    eval_id = resolve_eval_id()
+    if not eval_id:
+        print(
+            "\nℹ️  Skipping eval bootstrap: FOUNDRY_EVAL_ID is not set. "
+            "Create an eval template in the Foundry portal and set "
+            "FOUNDRY_EVAL_ID=<eval_...> to enable programmatic runs."
+        )
+        return
+
+    samples = int(os.environ.get("FOUNDRY_EVAL_SAMPLES", "15"))
+    agent_version = os.environ.get("FOUNDRY_EVAL_AGENT_VERSION", "1").strip() or "1"
+
+    print(f"\nLaunching Foundry evaluation runs (eval_id={eval_id})")
+    print(f"  Samples per run: {samples}")
+    print(f"  Agent version:   {agent_version}")
+
+    from azure.identity.aio import DefaultAzureCredential as AsyncCred
+    from azure.identity import DefaultAzureCredential as SyncCred
+
+    # evals_runner uses the sync AIProjectClient, so use sync credential.
+    sync_cred = SyncCred()
+    try:
+        results = await asyncio.to_thread(
+            trigger_runs,
+            project_endpoint=endpoint,
+            eval_id=eval_id,
+            agent_names=agent_names,
+            model_deployment=model,
+            credential=sync_cred,
+            agent_version=agent_version,
+            samples_count=samples,
+        )
+    finally:
+        # Keep AsyncCred import referenced so static analyzers don't prune it
+        # when this helper later switches to async pipelines.
+        del AsyncCred
+
+    print(f"\n{'AGENT':<22} {'STATUS':<10}  RUN_ID / MESSAGE")
+    print("-" * 90)
+    failures = 0
+    for r in results:
+        detail = r.run_id or r.message or ""
+        print(f"{r.agent_name:<22} {r.status:<10}  {detail}")
+        if r.status != "created":
+            failures += 1
+    if failures:
+        print(f"\n⚠️  {failures} of {len(results)} eval run(s) failed to launch (non-fatal).")
+    else:
+        print(f"\n✅ All {len(results)} eval runs launched.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
