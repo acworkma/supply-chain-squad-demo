@@ -70,6 +70,7 @@ Once it's running:
 | Topic | Link |
 |-------|------|
 | Architecture & technical design | [docs/architecture.md](docs/architecture.md) |
+| Meet the squad (the AI dev crew behind this repo) | [docs/squad.md](docs/squad.md) |
 
 ## License
 

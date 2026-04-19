@@ -11,10 +11,20 @@ const config: SquadConfig = {
     defaultModel: 'claude-sonnet-4.5',
     defaultTier: 'standard',
     fallbackChains: {
-      premium: ['claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4.5'],
+      premium: ['claude-opus-4.7', 'claude-opus-4.6', 'claude-opus-4.6-fast', 'claude-opus-4.5', 'claude-sonnet-4.5'],
       standard: ['claude-sonnet-4.5', 'gpt-5.2-codex', 'claude-sonnet-4', 'gpt-5.2'],
       fast: ['claude-haiku-4.5', 'gpt-5.1-codex-mini', 'gpt-4.1', 'gpt-5-mini']
     },
+    // Per-role overrides. Jester (tester) uses OpenAI so tests are authored by a
+    // different model family than the devs (who use Anthropic). With
+    // preferSameProvider=true, fallback stays on OpenAI:
+    //   gpt-5.2-codex → gpt-5.2 → gpt-5.1-codex-mini → gpt-4.1 → gpt-5-mini
+    roleMapping: [
+      {
+        role: 'tester',
+        model: 'gpt-5.2-codex'
+      }
+    ],
     preferSameProvider: true,
     respectTierCeiling: true,
     nuclearFallback: {

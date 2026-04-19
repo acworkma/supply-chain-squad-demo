@@ -39,9 +39,9 @@
 
 ## Model
 
-- **Preferred:** auto
-- **Rationale:** Coordinator selects the best model based on task type — cost first unless writing code
-- **Fallback:** Standard chain — the coordinator handles fallback automatically
+- **Preferred:** `gpt-5.2-codex` (OpenAI)
+- **Rationale:** Tests should be authored by a different model family than the devs (who run on Anthropic). Cross-provider authorship reduces the chance of model-specific blind spots slipping through to the test suite.
+- **Fallback:** OpenAI-only chain via `preferSameProvider: true` — `gpt-5.2-codex` → `gpt-5.2` → `gpt-5.1-codex-mini` → `gpt-4.1` → `gpt-5-mini`
 
 ## Collaboration
 
