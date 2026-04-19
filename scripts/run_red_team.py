@@ -55,7 +55,8 @@ from red_team_runner import (  # noqa: E402
 def _all_agent_names() -> list[str]:
     """Load canonical agent names from the app's registry."""
     try:
-        from app.agents.registry import AGENT_NAMES  # type: ignore[import-not-found]
+        # type: ignore[import-not-found]
+        from app.agents.registry import AGENT_NAMES
 
         return list(AGENT_NAMES)
     except Exception:
@@ -70,7 +71,8 @@ def _all_agent_names() -> list[str]:
 
 
 def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Launch Foundry red-team runs for demo agents.")
+    p = argparse.ArgumentParser(
+        description="Launch Foundry red-team runs for demo agents.")
     p.add_argument(
         "agents",
         nargs="*",
@@ -124,7 +126,8 @@ async def _amain() -> int:
     else:
         unknown = [a for a in selection if a not in registered]
         if unknown:
-            print(f"ERROR: unknown agent(s): {', '.join(unknown)}", file=sys.stderr)
+            print(
+                f"ERROR: unknown agent(s): {', '.join(unknown)}", file=sys.stderr)
             print(f"Known agents: {', '.join(registered)}", file=sys.stderr)
             return 2
         targets = selection
@@ -132,7 +135,8 @@ async def _amain() -> int:
     endpoint = resolve_project_endpoint()
     model = resolve_model_deployment()
     if not endpoint:
-        print("ERROR: PROJECT_ENDPOINT is not set (run: azd env get-values).", file=sys.stderr)
+        print(
+            "ERROR: PROJECT_ENDPOINT is not set (run: azd env get-values).", file=sys.stderr)
         return 2
     if not model:
         print("ERROR: MODEL_DEPLOYMENT_NAME is not set (run: azd env get-values).", file=sys.stderr)
@@ -186,7 +190,8 @@ async def _amain() -> int:
         if r.status != "created":
             failures += 1
     if failures:
-        print(f"\n⚠️  {failures} of {len(results)} red-team run(s) failed to launch.")
+        print(
+            f"\n⚠️  {failures} of {len(results)} red-team run(s) failed to launch.")
         return 1
     print(f"\n✅ All {len(results)} red-team runs launched.")
     return 0

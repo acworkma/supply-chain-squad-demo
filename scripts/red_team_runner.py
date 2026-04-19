@@ -125,7 +125,8 @@ def build_red_team_body(
     """
     scenario = AGENT_SCENARIOS.get(agent_name)
     if scenario is None:
-        raise ValueError(f"No application scenario registered for agent '{agent_name}'")
+        raise ValueError(
+            f"No application scenario registered for agent '{agent_name}'")
     rid = run_id or f"rt-{agent_name}-{uuid.uuid4().hex[:8]}"
     display = f"redteam-{agent_name}"
     if display_name_suffix:
@@ -178,7 +179,8 @@ def build_all_configs(
             simulation_only=simulation_only,
             display_name_suffix=suffix,
         )
-        configs.append(RedTeamConfig(agent_name=name, agent_version=ver, body=body))
+        configs.append(RedTeamConfig(agent_name=name,
+                       agent_version=ver, body=body))
     return configs
 
 
