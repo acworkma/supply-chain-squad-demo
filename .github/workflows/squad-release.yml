@@ -1,8 +1,12 @@
 name: Squad Release
 
+# Disabled as an automatic trigger: this demo repo does not publish versioned
+# releases, and the scaffolded workflow expects package.json#version,
+# CHANGELOG.md, and a test/ directory that don't exist here. Kept in place
+# (and runnable via the Actions tab) for future opt-in use — add those files
+# first, then run manually via workflow_dispatch.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
