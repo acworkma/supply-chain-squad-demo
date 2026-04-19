@@ -196,3 +196,36 @@ def test_eval_run_result_dataclass_fields() -> None:
     assert r.status == "created"
     assert r.run_id == "evalrun_1"
     assert r.message is None
+
+
+def test_trigger_runs_uses_per_agent_versions(monkeypatch) -> None:
+    """When agent_versions map is provided, each run body carries the matching version."""
+    fake_client_cls = MagicMock()
+    fake_responses = [_resp(201, {"id": f"evalrun_{i}"}) for i in range(3)]
+    fake_client_cls.return_value = _make_fake_client(fake_responses)
+    monkeypatch.setattr("azure.ai.projects.AIProjectClient", fake_client_cls)
+
+    versions = {
+        "supply-coordinator": "2",
+        "supply-scanner": "3",
+        # catalog-sourcer intentionally absent → falls back to agent_version
+    }
+    results = trigger_runs(
+        project_endpoint="https://x.example/api/projects/p",
+        eval_id="eval_123",
+        agent_names=["supply-coordinator", "supply-scanner", "catalog-sourcer"],
+        model_deployment="gpt-5.2",
+        credential=MagicMock(),
+        agent_version="1",
+        agent_versions=versions,
+    )
+
+    assert all(r.status == "created" for r in results)
+    calls = fake_client_cls.return_value.send_request.call_args_list
+    sent_bodies = [c[0][0].content for c in calls]
+    # content is bytes-encoded JSON; decode and verify version per call
+    import json as _json
+    bodies = [_json.loads(b) for b in sent_bodies]
+    assert bodies[0]["data_source"]["target"]["version"] == "2"
+    assert bodies[1]["data_source"]["target"]["version"] == "3"
+    assert bodies[2]["data_source"]["target"]["version"] == "1"

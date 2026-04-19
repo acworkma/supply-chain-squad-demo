@@ -12,13 +12,13 @@ Built on [Microsoft Foundry](https://ai.azure.com/) and designed to run as a liv
 
 Each agent has a specific job in the supply chain, just like real hospital staff:
 
-| Agent | What They Do |
-|-------|-------------|
+| Agent                  | What They Do                                                                                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Supply Coordinator** | The central hub of the AI team. Aggregates signals from all agents, surfaces replenishment recommendations, and drives the workflow end-to-end. Every other agent reports back through the Supply Coordinator. |
-| **Supply Scanner** | Monitors current inventory levels, par levels, and consumption trends to identify items needing restock. Thinks ahead — which items are trending toward shortage? Which closets are nearing critical levels? |
-| **Catalog Sourcer** | Finds the best sourcing options for needed items. Checks approved vendor catalogs, pricing, lead times, and contract status to recommend the optimal purchase. |
-| **Order Manager** | Handles the actual purchase order lifecycle. Once a sourcing option is chosen, Order Manager creates the PO, tracks fulfillment, and confirms delivery. |
-| **Compliance Gate** | The compliance check. Before any order is finalized, Compliance Gate validates it against formulary rules, budget limits, and regulatory constraints. Can block or escalate if something doesn't look right. |
+| **Supply Scanner**     | Monitors current inventory levels, par levels, and consumption trends to identify items needing restock. Thinks ahead — which items are trending toward shortage? Which closets are nearing critical levels?   |
+| **Catalog Sourcer**    | Finds the best sourcing options for needed items. Checks approved vendor catalogs, pricing, lead times, and contract status to recommend the optimal purchase.                                                 |
+| **Order Manager**      | Handles the actual purchase order lifecycle. Once a sourcing option is chosen, Order Manager creates the PO, tracks fulfillment, and confirms delivery.                                                        |
+| **Compliance Gate**    | The compliance check. Before any order is finalized, Compliance Gate validates it against formulary rules, budget limits, and regulatory constraints. Can block or escalate if something doesn't look right.   |
 
 ## The Demo Scenarios
 
@@ -51,10 +51,10 @@ This is the real showcase: **the agents don't just follow a script — they hand
 
 ## Running the Demo
 
-| Option | What You Need | Guide |
-|--------|--------------|-------|
-| **Local** | Python + Node.js (no Azure account required) | [Local setup guide](docs/local-development.md) |
-| **Azure** | Azure subscription + `azd` CLI | [Azure deployment guide](docs/azure-deployment.md) |
+| Option    | What You Need                                | Guide                                              |
+| --------- | -------------------------------------------- | -------------------------------------------------- |
+| **Local** | Python + Node.js (no Azure account required) | [Local setup guide](docs/local-development.md)     |
+| **Azure** | Azure subscription + `azd` CLI               | [Azure deployment guide](docs/azure-deployment.md) |
 
 Once it's running:
 
@@ -67,10 +67,10 @@ Once it's running:
 
 ## Learn More
 
-| Topic | Link |
-|-------|------|
-| Architecture & technical design | [docs/architecture.md](docs/architecture.md) |
-| Meet the squad (the AI dev crew behind this repo) | [docs/squad.md](docs/squad.md) |
+| Topic                                             | Link                                         |
+| ------------------------------------------------- | -------------------------------------------- |
+| Architecture & technical design                   | [docs/architecture.md](docs/architecture.md) |
+| Meet the squad (the AI dev crew behind this repo) | [docs/squad.md](docs/squad.md)               |
 
 ## License
 

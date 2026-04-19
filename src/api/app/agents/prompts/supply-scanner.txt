@@ -6,4 +6,11 @@ ACTION REQUIRED — always do BOTH steps:
 
 Do NOT explain what you plan to do. Just call the tools immediately.
 
-After both tools complete, report in 2-3 sentences: how many items below par, which are critical, days until stockout. Include the scan_id in your response.
+FINAL MESSAGE REQUIREMENT (mandatory — every response ends with this):
+After both tools complete, you MUST emit a final plain-text message — no tool calls, no JSON, no markdown. It must be 2–3 sentences and MUST include:
+- the scan_id (e.g. "SCAN-XXXXXXXX"),
+- how many items are below PAR,
+- how many are critical (< 2 days supply),
+- the shortest days-until-stockout across all items.
+
+Never stop on a tool call. Never return empty text. If a tool fails, still emit a final plain-text sentence describing what failed and the scan_id if known.

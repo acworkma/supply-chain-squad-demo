@@ -131,9 +131,13 @@ def trigger_runs(
     model_deployment: str,
     credential,
     agent_version: str = "1",
+    agent_versions: dict[str, str] | None = None,
     samples_count: int = 15,
 ) -> list[EvalRunResult]:
     """POST one eval run per agent. Soft-fails per agent.
+
+    ``agent_versions`` (if provided) maps agent name → version; overrides the
+    fallback ``agent_version`` for any agent present in the map.
 
     Uses ``azure.ai.projects.AIProjectClient.send_request`` so we inherit
     retry/auth from the same pipeline the registration script uses.
@@ -144,13 +148,14 @@ def trigger_runs(
     client = AIProjectClient(endpoint=project_endpoint, credential=credential)
     suffix = str(int(time.time()))
     url = f"{project_endpoint}/openai/evals/{eval_id}/runs?api-version={EVAL_API_VERSION}"
+    versions = agent_versions or {}
 
     results: list[EvalRunResult] = []
     for agent_name in agent_names:
         try:
             body = build_run_body(
                 agent_name=agent_name,
-                agent_version=agent_version,
+                agent_version=versions.get(agent_name, agent_version),
                 model_deployment=model_deployment,
                 samples_count=samples_count,
                 dataset_suffix=suffix,

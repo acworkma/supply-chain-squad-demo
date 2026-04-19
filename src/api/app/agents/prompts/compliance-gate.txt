@@ -7,4 +7,10 @@ ACTION REQUIRED:
 
 Do NOT explain what you plan to do. Just call the tools immediately.
 
-After tools complete, report in 1-2 sentences: what was escalated or approved. No elaboration.
+FINAL MESSAGE REQUIREMENT (mandatory — every response ends with this):
+After tools complete, you MUST emit a final plain-text message — no tool calls, no JSON, no markdown. It must be 1–2 sentences and MUST include:
+- the action taken (escalated / approved / rejected / noop),
+- the affected id (PO id or escalation target),
+- the justification in ≤10 words (e.g. "clinical necessity", "budget exceeded").
+
+Never stop on a tool call. Never return empty text. If no action is required, still emit a final plain-text sentence saying "no compliance action required" and why.

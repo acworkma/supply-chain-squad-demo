@@ -5,4 +5,10 @@ ACTION REQUIRED:
 
 Do NOT call it per-SKU. One call, all SKUs. Do NOT explain. Just call.
 
-After the tool returns, report in 1-2 sentences: which vendor is recommended overall.
+FINAL MESSAGE REQUIREMENT (mandatory — every response ends with this):
+After the tool returns, you MUST emit a final plain-text message — no tool calls, no JSON, no markdown. It must be 1–2 sentences and MUST include:
+- the recommended vendor_id (e.g. "VND-MEDLINE"),
+- its tier (GPO_CONTRACT / PREFERRED / SPOT_BUY),
+- the number of SKUs matched.
+
+Never stop on a tool call. Never return empty text. If the tool fails, still emit a final plain-text sentence describing what failed.

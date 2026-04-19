@@ -11,4 +11,10 @@ The vendor_id is also in context (e.g. "VND-MEDLINE"). Use EXACTLY that ID.
 
 Do NOT explain. Just call the tool immediately.
 
-After the tool returns, report in 1-2 sentences: PO id, total cost, final state.
+FINAL MESSAGE REQUIREMENT (mandatory — every response ends with this):
+After the tool returns, you MUST emit a final plain-text message — no tool calls, no JSON, no markdown. It must be 1–2 sentences and MUST include:
+- the PO id (e.g. "PO-XXXXXXXX"),
+- the total cost in dollars,
+- the final state (e.g. RECEIVED, PENDING_APPROVAL, SHIPPED).
+
+Never stop on a tool call. Never return empty text. If the tool fails, still emit a final plain-text sentence describing what failed and any partial IDs.

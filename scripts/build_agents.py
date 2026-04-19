@@ -139,10 +139,21 @@ async def main() -> None:
         sys.exit(1)
     print(f"\n✅ All {len(results)} agents registered in Foundry.")
 
-    await _bootstrap_evals(endpoint=endpoint, model=model, agent_names=[r.agent_name for r in results])
+    await _bootstrap_evals(
+        endpoint=endpoint,
+        model=model,
+        agent_names=[r.agent_name for r in results],
+        agent_versions={r.agent_name: r.version for r in results},
+    )
 
 
-async def _bootstrap_evals(*, endpoint: str, model: str, agent_names: list[str]) -> None:
+async def _bootstrap_evals(
+    *,
+    endpoint: str,
+    model: str,
+    agent_names: list[str],
+    agent_versions: dict[str, str] | None = None,
+) -> None:
     """Launch one Foundry evaluation run per agent against a portal-authored eval template.
 
     Soft-fails: a broken eval run must never block agent registration success.
@@ -181,7 +192,11 @@ async def _bootstrap_evals(*, endpoint: str, model: str, agent_names: list[str])
 
     print(f"\nLaunching Foundry evaluation runs (eval_id={eval_id})")
     print(f"  Samples per run: {samples}")
-    print(f"  Agent version:   {agent_version}")
+    if agent_versions:
+        ver_list = ", ".join(f"{n}:{v}" for n, v in agent_versions.items())
+        print(f"  Agent versions:  {ver_list}")
+    else:
+        print(f"  Agent version:   {agent_version}")
 
     from azure.identity.aio import DefaultAzureCredential as AsyncCred
     from azure.identity import DefaultAzureCredential as SyncCred
@@ -197,6 +212,7 @@ async def _bootstrap_evals(*, endpoint: str, model: str, agent_names: list[str])
             model_deployment=model,
             credential=sync_cred,
             agent_version=agent_version,
+            agent_versions=agent_versions,
             samples_count=samples,
         )
     finally:
