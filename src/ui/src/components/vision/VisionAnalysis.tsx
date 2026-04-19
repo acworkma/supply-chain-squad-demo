@@ -85,7 +85,7 @@ export function VisionAnalysis({ scanResult, imageFile, onStartWorkflow }: Visio
     <div className="flex items-center justify-center h-full w-full p-6">
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* ── Left: Uploaded image with scan overlay ── */}
-        <div className="relative rounded-xl border border-tower-border bg-tower-surface overflow-hidden aspect-[4/3]">
+        <div className="relative rounded-xl border border-tower-border bg-tower-surface overflow-hidden aspect-4/3">
           <img
             src={imageUrl.current}
             alt="Supply closet"
@@ -109,13 +109,13 @@ export function VisionAnalysis({ scanResult, imageFile, onStartWorkflow }: Visio
           {/* Check overlay when done */}
           {phase === "done" && (
             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-              <div className="rounded-full bg-emerald-500/20 p-3 backdrop-blur-sm border border-emerald-500/30">
+              <div className="rounded-full bg-emerald-500/20 p-3 backdrop-blur-xs border border-emerald-500/30">
                 <CheckCircle2 className="h-8 w-8 text-emerald-400" />
               </div>
             </div>
           )}
           {/* Closet label */}
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+          <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/70 to-transparent px-4 py-3">
             <p className="text-sm font-semibold text-gray-100">{scanResult.closet_name}</p>
             <p className="text-xs text-gray-400 font-mono">{scanResult.closet_id}</p>
           </div>
@@ -150,7 +150,7 @@ export function VisionAnalysis({ scanResult, imageFile, onStartWorkflow }: Visio
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-10 rounded bg-white/[0.03] animate-pulse"
+                    className="h-10 rounded-sm bg-white/3 animate-pulse"
                     style={{ animationDelay: `${i * 150}ms` }}
                   />
                 ))}
@@ -164,7 +164,7 @@ export function VisionAnalysis({ scanResult, imageFile, onStartWorkflow }: Visio
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-lg border border-transparent transition-all duration-300",
                       visible
-                        ? "opacity-100 translate-x-0 bg-white/[0.03] border-tower-border/50"
+                        ? "opacity-100 translate-x-0 bg-white/3 border-tower-border/50"
                         : "opacity-0 translate-x-4",
                     )}
                   >

@@ -66,7 +66,7 @@ export function InventoryBoard({ supplyItems, loading, error }: InventoryBoardPr
                 <div
                   key={item.id}
                   className={cn(
-                    "rounded border px-2 py-1.5 text-[11px] transition-colors",
+                    "rounded-sm border px-2 py-1.5 text-[11px] transition-colors",
                     itemStatusColor(item.current_quantity, item.par_level, item.criticality)
                   )}
                 >
@@ -75,7 +75,7 @@ export function InventoryBoard({ supplyItems, loading, error }: InventoryBoardPr
                     <span className="font-semibold font-mono truncate" title={item.sku}>
                       {item.sku}
                     </span>
-                    <span className={cn("ml-auto text-[9px] px-1 rounded", criticalityBadge(item.criticality))}>
+                    <span className={cn("ml-auto text-[9px] px-1 rounded-sm", criticalityBadge(item.criticality))}>
                       {item.criticality}
                     </span>
                   </div>

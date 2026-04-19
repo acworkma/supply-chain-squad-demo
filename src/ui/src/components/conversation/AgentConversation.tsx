@@ -70,7 +70,7 @@ function MessageBubble({ msg, expanded, onToggle }: MessageBubbleProps) {
           <span className="text-[10px] text-gray-600">{msg.agent_role}</span>
           <span
             className={cn(
-              "inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
+              "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase",
               intentTagBadge(msg.intent_tag)
             )}
           >
@@ -125,7 +125,7 @@ function MessageBubble({ msg, expanded, onToggle }: MessageBubbleProps) {
             {msg.related_event_ids.map((eid) => (
               <span
                 key={eid}
-                className="inline-flex items-center rounded bg-tower-border px-1.5 py-0.5 text-[9px] font-mono text-gray-400 hover:text-gray-200 transition-colors cursor-default"
+                className="inline-flex items-center rounded-sm bg-tower-border px-1.5 py-0.5 text-[9px] font-mono text-gray-400 hover:text-gray-200 transition-colors cursor-default"
                 title={`Event: ${eid}`}
               >
                 {eid.slice(0, 8)}

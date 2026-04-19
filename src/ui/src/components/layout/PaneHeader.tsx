@@ -31,7 +31,7 @@ export function PaneHeader({
       )}
     >
       {/* Accent highlight bar */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-tower-accent/40 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-tower-accent/40 to-transparent" />
 
       <Icon className="h-4 w-4 text-tower-accent shrink-0" />
       <h2 className="text-sm font-semibold tracking-wide text-gray-200 uppercase">

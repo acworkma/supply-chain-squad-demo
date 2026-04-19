@@ -120,10 +120,10 @@ export function ImageUpload({ onScanComplete }: ImageUploadProps) {
         disabled={uploading}
         className={cn(
           "w-full max-w-lg rounded-xl border-2 border-dashed p-12 text-center transition-all duration-200 cursor-pointer",
-          "focus:outline-none focus:ring-2 focus:ring-tower-accent/50 focus:ring-offset-2 focus:ring-offset-tower-bg",
+          "focus:outline-hidden focus:ring-2 focus:ring-tower-accent/50 focus:ring-offset-2 focus:ring-offset-tower-bg",
           dragOver
             ? "border-tower-accent bg-tower-accent/10 scale-[1.02]"
-            : "border-tower-border hover:border-tower-accent/50 hover:bg-white/[0.02]",
+            : "border-tower-border hover:border-tower-accent/50 hover:bg-white/2",
           uploading && "pointer-events-none opacity-60",
         )}
       >

@@ -213,7 +213,7 @@ const AgentNode = forwardRef<HTMLDivElement, AgentNodeProps>(
           {lastIntent && (
             <span
               className={cn(
-                "inline-flex items-center self-start rounded px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none",
+                "inline-flex items-center self-start rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none",
                 intentTagBadge(lastIntent)
               )}
             >

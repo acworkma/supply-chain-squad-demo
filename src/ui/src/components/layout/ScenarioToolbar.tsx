@@ -38,7 +38,7 @@ export function ScenarioToolbar({ eventsConnected, messagesConnected, phase, onN
             <button
               onClick={onNewScan}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
+                "inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors",
                 "border border-tower-accent/30 bg-tower-accent/10 text-tower-accent",
                 "hover:bg-tower-accent/20 hover:border-tower-accent/50",
               )}
@@ -53,7 +53,7 @@ export function ScenarioToolbar({ eventsConnected, messagesConnected, phase, onN
                 <img
                   src={thumbnailUrl}
                   alt={closetName}
-                  className="h-6 w-6 rounded object-cover border border-tower-border"
+                  className="h-6 w-6 rounded-sm object-cover border border-tower-border"
                 />
                 <span className="text-xs text-gray-400 font-medium">{closetName}</span>
               </div>

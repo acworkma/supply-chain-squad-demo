@@ -62,7 +62,7 @@ export function OrderQueue({ purchaseOrders, loading, error }: OrderQueueProps) 
         {sorted.map((po) => (
           <tr
             key={po.id}
-            className="border-b border-tower-border/50 hover:bg-white/[0.02] transition-colors"
+            className="border-b border-tower-border/50 hover:bg-white/2 transition-colors"
           >
             <td className="px-3 py-1.5 text-gray-400 font-mono">{po.id}</td>
             <td className="px-3 py-1.5 text-gray-200 font-medium truncate max-w-[120px]">
@@ -71,7 +71,7 @@ export function OrderQueue({ purchaseOrders, loading, error }: OrderQueueProps) 
             <td className="px-3 py-1.5">
               <span
                 className={cn(
-                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
+                  "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
                   poStateBadge(po.state)
                 )}
               >
@@ -81,7 +81,7 @@ export function OrderQueue({ purchaseOrders, loading, error }: OrderQueueProps) 
             <td className="px-3 py-1.5">
               <span
                 className={cn(
-                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
+                  "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
                   poApprovalBadge(po.approval_status)
                 )}
               >
