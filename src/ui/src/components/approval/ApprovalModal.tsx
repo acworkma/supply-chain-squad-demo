@@ -32,7 +32,7 @@ export function ApprovalModal({ po, onClose }: ApprovalModalProps) {
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-in fade-in">
       <div className="w-full max-w-lg rounded-lg border border-tower-border bg-tower-surface shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-tower-border px-6 py-4">
@@ -51,7 +51,7 @@ export function ApprovalModal({ po, onClose }: ApprovalModalProps) {
         {/* Body */}
         <div className="space-y-4 px-6 py-5">
           {/* PO Summary */}
-          <div className="rounded border border-tower-border bg-tower-bg p-4 space-y-2 text-sm">
+          <div className="rounded-sm border border-tower-border bg-tower-bg p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-400">PO ID</span>
               <span className="font-mono text-gray-200">{po.id}</span>
@@ -73,7 +73,7 @@ export function ApprovalModal({ po, onClose }: ApprovalModalProps) {
           </div>
 
           {/* Line items detail */}
-          <div className="max-h-40 overflow-y-auto rounded border border-tower-border bg-tower-bg">
+          <div className="max-h-40 overflow-y-auto rounded-sm border border-tower-border bg-tower-bg">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-tower-border text-gray-500">
@@ -98,7 +98,7 @@ export function ApprovalModal({ po, onClose }: ApprovalModalProps) {
 
           {/* Note */}
           <textarea
-            className="w-full rounded border border-tower-border bg-tower-bg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:border-tower-accent/50 focus:outline-none"
+            className="w-full rounded-sm border border-tower-border bg-tower-bg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:border-tower-accent/50 focus:outline-hidden"
             rows={2}
             placeholder="Approval note (optional)"
             value={note}
@@ -112,7 +112,7 @@ export function ApprovalModal({ po, onClose }: ApprovalModalProps) {
             onClick={() => handleDecision(false)}
             disabled={submitting}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium transition-colors",
+              "inline-flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-medium transition-colors",
               "border border-red-500/40 text-red-400 hover:bg-red-500/10",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}
@@ -124,7 +124,7 @@ export function ApprovalModal({ po, onClose }: ApprovalModalProps) {
             onClick={() => handleDecision(true)}
             disabled={submitting}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium transition-colors",
+              "inline-flex items-center gap-1.5 rounded-sm px-4 py-2 text-sm font-medium transition-colors",
               "border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}

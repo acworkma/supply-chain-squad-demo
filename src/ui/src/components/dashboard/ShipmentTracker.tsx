@@ -62,10 +62,10 @@ export function ShipmentTracker({ shipments, loading, error }: ShipmentTrackerPr
       {shipments.map((s) => (
         <div
           key={s.id}
-          className="flex items-start gap-3 px-3 py-2 hover:bg-white/[0.02] transition-colors text-xs"
+          className="flex items-start gap-3 px-3 py-2 hover:bg-white/2 transition-colors text-xs"
         >
           {/* Carrier badge */}
-          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase shrink-0 bg-tower-accent/10 text-tower-accent">
+          <span className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase shrink-0 bg-tower-accent/10 text-tower-accent">
             {s.carrier}
           </span>
 
@@ -88,7 +88,7 @@ export function ShipmentTracker({ shipments, loading, error }: ShipmentTrackerPr
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span
               className={cn(
-                "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
+                "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold border transition-colors",
                 shipmentStateBadge(s.state)
               )}
             >

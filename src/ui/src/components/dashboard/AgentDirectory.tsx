@@ -45,14 +45,14 @@ export function AgentDirectory({ isOpen, onToggle, messages }: AgentDirectoryPro
     <section className="flex-1 rounded-lg border border-tower-border bg-tower-surface overflow-hidden flex flex-col">
       {/* Header — matches PaneHeader styling */}
       <div className="relative flex items-center gap-2.5 px-4 py-3 border-b border-tower-border">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-tower-accent/40 to-transparent" />
+        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-tower-accent/40 to-transparent" />
         <Bot className="h-4 w-4 text-tower-accent shrink-0" />
         <h2 className="text-sm font-semibold tracking-wide text-gray-200 uppercase flex-1">
           Agent Directory
         </h2>
         <button
           onClick={onToggle}
-          className="p-1 rounded hover:bg-tower-accent/10 transition-colors"
+          className="p-1 rounded-sm hover:bg-tower-accent/10 transition-colors"
         >
           <ChevronRight className="h-4 w-4 text-gray-400 hover:text-gray-200" />
         </button>

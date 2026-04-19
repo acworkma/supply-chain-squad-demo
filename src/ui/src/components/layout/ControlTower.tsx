@@ -157,7 +157,7 @@ export function ControlTower() {
         </section>
 
         {/* Closet Inventory — takes the most space */}
-        <section className="flex flex-col flex-[2] rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
+        <section className="flex flex-col flex-2 rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
           <PaneHeader icon={Package} title="Closet Inventory" badge={itemList.length || undefined} />
           <div className="overflow-y-auto flex-1">
             <InventoryBoard supplyItems={itemList} loading={loading} error={error} />
@@ -176,7 +176,7 @@ export function ControlTower() {
       {/* ── Right Column: split top/bottom ── */}
       <div className="flex flex-col gap-2 overflow-hidden">
         {/* Agent Conversation — 55% of right column */}
-        <section className="flex flex-col flex-[55] rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
+        <section className="flex flex-col flex-55 rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
           <PaneHeader icon={MessageSquare} title="Agent Conversation" badge={messages.length || undefined} />
           <div className="overflow-y-auto flex-1 flex">
             <AgentConversation messages={messages} />
@@ -184,7 +184,7 @@ export function ControlTower() {
         </section>
 
         {/* Event Timeline — 45% of right column */}
-        <section className="flex flex-col flex-[45] rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
+        <section className="flex flex-col flex-45 rounded-lg border border-tower-border bg-tower-surface overflow-hidden">
           <PaneHeader icon={Activity} title="Event Timeline" badge={events.length || undefined} />
           <div className="overflow-y-auto flex-1 flex">
             <EventTimeline events={events} />
@@ -205,9 +205,9 @@ export function ControlTower() {
       )}>
         <button
           onClick={toggleNetworkPanel}
-          className="relative flex items-center gap-2.5 px-4 py-2.5 border-b border-tower-border hover:bg-white/[0.02] transition-colors cursor-pointer shrink-0"
+          className="relative flex items-center gap-2.5 px-4 py-2.5 border-b border-tower-border hover:bg-white/2 transition-colors cursor-pointer shrink-0"
         >
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-tower-accent/40 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-tower-accent/40 to-transparent" />
           <Network className="h-4 w-4 text-tower-accent shrink-0" />
           <h2 className="text-sm font-semibold tracking-wide text-gray-200 uppercase">Agent Network</h2>
           {networkPanelOpen

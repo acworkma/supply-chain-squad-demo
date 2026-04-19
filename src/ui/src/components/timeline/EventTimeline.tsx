@@ -24,7 +24,7 @@ function EventRow({ event }: { event: Event }) {
     <div className="border-b border-tower-border/40">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/[0.02] transition-colors group text-xs"
+        className="flex items-center gap-2 w-full px-3 py-1.5 text-left hover:bg-white/2 transition-colors group text-xs"
       >
         <ChevronRight
           className={cn(
@@ -40,7 +40,7 @@ function EventRow({ event }: { event: Event }) {
         </span>
         <span
           className={cn(
-            "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
+            "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
             eventTypeColor(event.event_type)
           )}
         >
@@ -52,7 +52,7 @@ function EventRow({ event }: { event: Event }) {
       </button>
 
       {expanded && (
-        <div className="px-3 pb-2 pl-[4.5rem] space-y-2">
+        <div className="px-3 pb-2 pl-18 space-y-2">
           {/* State diff */}
           {event.state_diff && (
             <div className="flex items-center gap-2 text-[11px]">
@@ -65,7 +65,7 @@ function EventRow({ event }: { event: Event }) {
 
           {/* Payload */}
           {Object.keys(event.payload).length > 0 && (
-            <pre className="text-[10px] text-gray-400 bg-tower-bg rounded p-2 overflow-x-auto font-mono leading-relaxed">
+            <pre className="text-[10px] text-gray-400 bg-tower-bg rounded-sm p-2 overflow-x-auto font-mono leading-relaxed">
               {JSON.stringify(event.payload, null, 2)}
             </pre>
           )}
