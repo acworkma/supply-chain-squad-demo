@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fastapi[standard]",
     "uvicorn[standard]",
-    "agent-framework-foundry==1.0.0",
+    "agent-framework-foundry==1.0.1",
     "azure-ai-projects>=2.0.0",
     "azure-monitor-opentelemetry>=1.6.0",
     "azure-identity>=1.21.0",
