@@ -16,6 +16,10 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Keep deploys from hanging the runner all day if azd auth stalls or
+    # azd up wedges. 45 min is ample for a cold provision + image build
+    # + ACA deploy; anything beyond that indicates a stuck step.
+    timeout-minutes: 45
     env:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -36,7 +40,17 @@ jobs:
           python-version: '3.12'
 
       - name: Log in with Azure (federated credentials)
+        # Fail fast if auth hangs instead of using the runner's 6-hour default.
+        timeout-minutes: 3
         run: |
+          # Fail fast if any required secret is missing rather than letting
+          # azd prompt interactively (which just hangs on a non-TTY runner).
+          for var in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
+            if [[ -z "${!var}" ]]; then
+              echo "::error::Required secret $var is not set"
+              exit 1
+            fi
+          done
           azd auth login \
             --client-id "$AZURE_CLIENT_ID" \
             --federated-credential-provider "github" \

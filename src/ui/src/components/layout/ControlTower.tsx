@@ -25,10 +25,10 @@ export function ControlTower() {
   const { items: events, connected: eventsConnected, clear: clearEvents } = useSSE<Event>("/api/events/stream");
   const { items: messages, connected: messagesConnected, clear: clearMessages } = useSSE<AgentMessage>("/api/agent-messages/stream");
 
-  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [agentPanelOpen, setAgentPanelOpen] = useState(true);
   const toggleAgentPanel = useCallback(() => setAgentPanelOpen(prev => !prev), []);
 
-  const [networkPanelOpen, setNetworkPanelOpen] = useState(true);
+  const [networkPanelOpen, setNetworkPanelOpen] = useState(false);
   const toggleNetworkPanel = useCallback(() => setNetworkPanelOpen(prev => !prev), []);
 
   // ── Demo phase state machine ──
