@@ -1,5 +1,5 @@
 # Stage 1: Build React UI
-FROM node:25-alpine AS ui-builder
+FROM node:26-alpine AS ui-builder
 WORKDIR /build
 COPY src/ui/package*.json ./
 RUN npm ci --legacy-peer-deps
